@@ -17,21 +17,55 @@ const levels = [
   { value: "advanced", label: "Avancé" },
 ];
 
-export default function UserProfileForm() {
+export default function UserProfileForm({ onProfileSaved }) {
   const { register, handleSubmit, control, watch } = useForm();
   const [location, setLocation] = useState("");
   const [geoLocation, setGeoLocation] = useState(null);
+  const [error, setError] = useState(null);
 
   const selectedDances = watch("dances") || [];
 
-  const onSubmit = (data) => {
-    alert("Formulaire soumis !");
-    console.log({
+  const onSubmit = async (data) => {
+    setError(null);
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Utilisateur non authentifié.");
+      return;
+    }
+
+    // Préparation du body avec la localisation manuelle et GPS
+    const body = {
       ...data,
       location,
       geoLocation,
-    });
-    // Ici, envoie vers le backend
+    };
+
+    try {
+      const res = await fetch("http://localhost:3001/api/profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        setError(errorData.error || "Erreur lors de l'enregistrement du profil.");
+        return;
+      }
+
+      const savedProfile = await res.json();
+
+      // Appel du callback parent après succès
+      if (onProfileSaved) {
+        onProfileSaved(body);
+      }
+    } catch (err) {
+      setError("Erreur réseau ou serveur.");
+    }
   };
 
   const handleGetGPS = () => {
@@ -135,6 +169,8 @@ export default function UserProfileForm() {
           placeholder="Parlez un peu de vous, vos préférences, votre style de danse..."
         />
       </div>
+
+      {error && <p className="text-red-600">{error}</p>}
 
       <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
         Enregistrer mon profil

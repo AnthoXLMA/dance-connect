@@ -7,7 +7,7 @@ export default function DancesList() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    axios.get('http://localhost:4000/api/dances')
+    axios.get('http://localhost:3001/api/dances')
       .then(response => {
         setDances(response.data);
         setLoading(false);
