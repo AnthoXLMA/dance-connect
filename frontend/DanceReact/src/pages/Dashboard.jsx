@@ -18,7 +18,6 @@ function ChangeMapView({ center }) {
   }, [center, map]);
   return null;
 }
-
 // Icônes personnalisées
 const eventIcon = L.divIcon({
   className: "custom-icon",
@@ -266,7 +265,7 @@ export default function Dashboard({ profile }) {
             );
           }}
         >
-          Utiliser ma position actuelle
+          Ma position
         </button>
 
         {/* Filtre danses */}
