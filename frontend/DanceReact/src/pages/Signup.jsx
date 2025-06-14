@@ -1,23 +1,46 @@
 import React from "react";
 import { useForm } from "react-hook-form";
 
-  export default function Signup() {
+export default function Signup({ onSignup }) {
   const { register, handleSubmit, formState: { errors } } = useForm();
 
-  const onSubmit = (data) => {
-    fetch("http://localhost:3001/api/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    })
-      .then(async res => {
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.error || "Erreur inscription");
-        }
-        alert("Inscription réussie !");
-      })
-      .catch(err => alert(err.message));
+  const onSubmit = async (data) => {
+    try {
+      // Étape 1 : inscription
+      const res = await fetch("http://localhost:3001/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Erreur inscription");
+      }
+
+      // Étape 2 : connexion automatique après inscription
+      const loginRes = await fetch("http://localhost:3001/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
+      });
+
+      const loginData = await loginRes.json();
+
+      if (!loginRes.ok) {
+        throw new Error(loginData.error || "Erreur de connexion après inscription");
+      }
+
+      // Étape 3 : stockage du token et déclenchement de la session
+      localStorage.setItem("token", loginData.token);
+      if (onSignup) onSignup(); // déclenche setIsLoggedIn(true)
+
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   return (
@@ -50,7 +73,3 @@ import { useForm } from "react-hook-form";
     </form>
   );
 }
-
-
-
-
