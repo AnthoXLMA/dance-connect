@@ -1,15 +1,16 @@
 import React from "react";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 
 export default function Signup({ onSignup }) {
   const { register, handleSubmit, formState: { errors } } = useForm();
+  const navigate = useNavigate();
 
   const onSubmit = async (data) => {
     try {
-      // Étape 1 : inscription
       const res = await fetch("http://localhost:3001/api/signup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
@@ -18,10 +19,9 @@ export default function Signup({ onSignup }) {
         throw new Error(error.error || "Erreur inscription");
       }
 
-      // Étape 2 : connexion automatique après inscription
       const loginRes = await fetch("http://localhost:3001/api/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: data.email,
           password: data.password,
@@ -34,9 +34,10 @@ export default function Signup({ onSignup }) {
         throw new Error(loginData.error || "Erreur de connexion après inscription");
       }
 
-      // Étape 3 : stockage du token et déclenchement de la session
       localStorage.setItem("token", loginData.token);
-      if (onSignup) onSignup(); // déclenche setIsLoggedIn(true)
+
+      if (onSignup) onSignup(); // ← met à jour isLoggedIn dans App.jsx
+      navigate("/profile-form"); // ← redirection manuelle
 
     } catch (err) {
       alert(err.message);
@@ -46,7 +47,6 @@ export default function Signup({ onSignup }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-md mx-auto p-4">
       <h2 className="text-xl font-bold mb-4">Créer un compte</h2>
-
       <div className="mb-4">
         <label>Email</label>
         <input

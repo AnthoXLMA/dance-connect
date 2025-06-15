@@ -46,7 +46,7 @@ export default function UserProfileForm({ onProfileSaved }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify(body),
       });
@@ -61,7 +61,7 @@ export default function UserProfileForm({ onProfileSaved }) {
 
       // Appel du callback parent après succès
       if (onProfileSaved) {
-        onProfileSaved(body);
+        onProfileSaved(savedProfile);  // <-- ici tu envoies les données exactes du serveur
       }
     } catch (err) {
       setError("Erreur réseau ou serveur.");
