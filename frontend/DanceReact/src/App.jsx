@@ -5,22 +5,24 @@ import {
   Route,
   Navigate,
   useNavigate,
+  useLocation,
 } from "react-router-dom";
+
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import UserProfileForm from "./components/UserProfileForm";
 import Dashboard from "./pages/Dashboard";
-import BottomNavBar from "./components/BottomNavBar";
 import MapView from "./pages/MapView";
 import MessagesPage from "./pages/MessagesPage";
 import ProfilePage from "./pages/ProfilePage";
+import UserProfileForm from "./components/UserProfileForm";
+import BottomNavBar from "./components/BottomNavBar";
 
-// 🔐 Wrapper pour routes protégées
+// 🔐 Route protégée
 function ProtectedRoute({ isLoggedIn, children }) {
-  return isLoggedIn ? children : <Navigate to="/" />;
+  return isLoggedIn ? children : <Navigate to="/login" />;
 }
 
-// ⚙️ Redirection vers formulaire si profil incomplet
+// ⚙️ Redirection conditionnelle vers formulaire si profil incomplet
 function ProfileWrapper({ profile, setProfile }) {
   const navigate = useNavigate();
   const isProfileComplete = profile && Object.keys(profile).length > 1;
@@ -37,19 +39,21 @@ function ProfileWrapper({ profile, setProfile }) {
   return <Navigate to="/dashboard" />;
 }
 
-// 🌐 Layout privé avec navigation et déconnexion
+// 🌐 Layout avec navigation et déconnexion
 function PrivateLayout({ profile, handleLogout }) {
+  const location = useLocation();
+  const showNavbar = !["/login", "/signup"].includes(location.pathname);
+
   return (
-    <div className="pb-20"> {/* Espace pour BottomNavBar */}
+    <div className="pb-20">
+      {showNavbar && <BottomNavBar />}
       <Routes>
-        <Route path="/dashboard" element={<Dashboard profile={profile} />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/map" element={<MapView />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/profile" element={<ProfilePage />} />
-        {/* ⚠️ Ajoute ici toutes les routes accessibles en privé */}
       </Routes>
 
-      <BottomNavBar />
       <div className="text-center my-4">
         <button onClick={handleLogout}>Se déconnecter</button>
       </div>
@@ -60,52 +64,58 @@ function PrivateLayout({ profile, handleLogout }) {
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profile, setProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(true); // true par défaut
 
-  // Au montage, si token présent, on set isLoggedIn pour lancer la récupération
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
+useEffect(() => {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    setLoadingProfile(false);
+    return;
+  }
+
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch("http://localhost:3001/api/profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Token invalide");
+
+      const data = await res.json();
       setIsLoggedIn(true);
+      setProfile(data);
+    } catch (err) {
+      console.error("Erreur lors du chargement du profil :", err.message);
+      setIsLoggedIn(false);
+      setProfile(null);
+      localStorage.removeItem("token");
+    } finally {
+      setLoadingProfile(false);
     }
-  }, []);
+  };
 
-  // Quand isLoggedIn passe à true, on récupère le profil
-  useEffect(() => {
-    if (isLoggedIn) {
-      const token = localStorage.getItem("token");
-      fetch("http://localhost:3001/api/profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error("Token invalide ou expiré");
-          return res.json();
-        })
-        .then((data) => setProfile(data))
-        .catch(() => {
-          setIsLoggedIn(false);
-          setProfile(null);
-          localStorage.removeItem("token");
-        });
-    } else {
-      setProfile(null); // Nettoie profil si déconnecté
-    }
-  }, [isLoggedIn]);
+  fetchProfile();
+}, []);
+
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     setIsLoggedIn(false);
+    setProfile(null);
   };
 
-  console.log("isLoggedIn =", isLoggedIn);
-  console.log("profile =", profile);
-
+  if (loadingProfile) {
+    return <div className="text-center mt-20">Chargement du profil...</div>;
+  }
 
   return (
     <Router>
       <Routes>
-        {/* Page d’accueil : redirige selon état */}
         <Route
-          path="/"
+          path="/profile"
           element={
             isLoggedIn ? (
               profile && Object.keys(profile).length > 1 ? (
@@ -118,11 +128,17 @@ export default function App() {
             )
           }
         />
-        {/* Login / Signup */}
-        <Route path="/login" element={<Login onLogin={() => setIsLoggedIn(true)} />} />
-        <Route path="/signup" element={<Signup onSignup={() => setIsLoggedIn(true)} />} />
 
-        {/* Formulaire profil */}
+        <Route
+          path="/login"
+          element={<Login onLogin={() => setIsLoggedIn(true)} />}
+        />
+
+        <Route
+          path="/signup"
+          element={<Signup onSignup={() => setIsLoggedIn(true)} />}
+        />
+
         <Route
           path="/profile-form"
           element={
@@ -132,7 +148,6 @@ export default function App() {
           }
         />
 
-        {/* Private routes */}
         <Route
           path="/*"
           element={

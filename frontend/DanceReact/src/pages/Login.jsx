@@ -13,7 +13,7 @@ export default function Login({ onLogin }) {
   const onSubmit = (data) => {
     fetch("http://localhost:3001/api/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
       .then(async (res) => {
@@ -27,9 +27,11 @@ export default function Login({ onLogin }) {
         localStorage.setItem("token", token);
         alert("Connexion réussie !");
         if (onLogin) onLogin(); // Déclenche App.jsx → isLoggedIn = true
+        //navigate("/dashboard");
       })
       .catch((err) => alert(err.message));
   };
+
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-md mx-auto p-4">
@@ -40,6 +42,7 @@ export default function Login({ onLogin }) {
         <input
           {...register("email", { required: "Email requis" })}
           type="email"
+          autoComplete="email"
           className="w-full border p-2 rounded"
         />
         {errors.email && <p className="text-red-600">{errors.email.message}</p>}
@@ -50,6 +53,7 @@ export default function Login({ onLogin }) {
         <input
           {...register("password", { required: "Mot de passe requis" })}
           type="password"
+          autoComplete="current-password"
           className="w-full border p-2 rounded"
         />
         {errors.password && <p className="text-red-600">{errors.password.message}</p>}
