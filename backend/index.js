@@ -1,16 +1,27 @@
+require('dotenv').config();
+
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-
 const app = express();
 const PORT = 3001;
-const JWT_SECRET = "ta_cle_secrete_très_longue_et_complexe"; // 🔐 à sécuriser dans .env plus tard
+const jwtSecret = process.env.JWT_SECRET;
+const { authenticateToken, generateToken } = require("./middlewares/auth");
 
 // Middlewares
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173", // ou "*", en développement
+  credentials: true
+}));
+
 app.use(bodyParser.json());
+
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
 
 // Stockages temporaires (à remplacer par une base de données)
 const users = [];
@@ -18,20 +29,9 @@ const profiles = {};
 const messages = [];
 
 // Middleware d'authentification JWT
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
 
-  if (!token) return res.sendStatus(401);
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
-    next();
-  });
-}
-
-// Route d'inscription
+// 🔐 Auth routes
 app.post("/api/signup", async (req, res) => {
   const { email, password } = req.body;
 
@@ -50,25 +50,33 @@ app.post("/api/signup", async (req, res) => {
   res.json({ message: "Inscription réussie !" });
 });
 
-// Route de connexion
+console.log("🔐 Clé JWT utilisée :", jwtSecret);
+
 app.post("/api/login", async (req, res) => {
+  console.log("Requête login reçue :", req.body);
+  console.log("Utilisateurs enregistrés :", users);
+
   const { email, password } = req.body;
 
   const user = users.find((u) => u.email === email);
   if (!user) {
+    console.log("Utilisateur non trouvé !");
     return res.status(401).json({ error: "Email ou mot de passe incorrect." });
   }
 
   const passwordMatch = await bcrypt.compare(password, user.password);
   if (!passwordMatch) {
+    console.log("Mot de passe incorrect !");
     return res.status(401).json({ error: "Email ou mot de passe incorrect." });
   }
 
-  const token = jwt.sign({ email: user.email }, JWT_SECRET, { expiresIn: "1h" });
+  const token = jwt.sign({ email: user.email }, jwtSecret, { expiresIn: "1h" });
+  console.log("Connexion réussie, token généré.");
   res.json({ token });
 });
 
-// Route POST pour créer ou mettre à jour un profil utilisateur
+
+// 👤 Profile routes
 app.post("/api/profile", authenticateToken, (req, res) => {
   const email = req.user.email;
   const profileData = req.body;
@@ -78,10 +86,11 @@ app.post("/api/profile", authenticateToken, (req, res) => {
   }
 
   profiles[email] = profileData;
-  res.json({ message: "Profil enregistré avec succès !" });
+  // Retourner le profil avec l'email
+  res.json({ email, ...profileData });
 });
 
-// Route GET pour récupérer le profil
+
 app.get("/api/profile", authenticateToken, (req, res) => {
   const email = req.user.email;
   const profile = profiles[email];
@@ -93,7 +102,7 @@ app.get("/api/profile", authenticateToken, (req, res) => {
   res.json({ email, ...profile });
 });
 
-// Route POST pour envoyer un message
+// 💬 Message routes
 app.post("/api/messages", authenticateToken, (req, res) => {
   const from = req.user.email;
   const { to, content } = req.body;
@@ -114,7 +123,6 @@ app.post("/api/messages", authenticateToken, (req, res) => {
   res.status(201).json({ message: "Message envoyé avec succès", data: message });
 });
 
-// Route GET pour récupérer les messages d’un utilisateur
 app.get("/api/messages", authenticateToken, (req, res) => {
   const email = req.user.email;
   const userMessages = messages.filter(
@@ -123,18 +131,13 @@ app.get("/api/messages", authenticateToken, (req, res) => {
   res.json(userMessages);
 });
 
-// GET /api/messages/received
-router.get("/received", authenticateToken, async (req, res) => {
-  try {
-    const messages = await Message.find({ to: req.user.email }).sort({ createdAt: -1 });
-    res.json(messages);
-  } catch (err) {
-    res.status(500).json({ error: "Erreur lors de la récupération des messages" });
-  }
+app.get("/api/messages/received", authenticateToken, (req, res) => {
+  const email = req.user.email;
+  const receivedMessages = messages.filter((msg) => msg.to === email);
+  res.json(receivedMessages);
 });
 
-
-// Lancement du serveur
+// 🚀 Start server
 app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
 });
