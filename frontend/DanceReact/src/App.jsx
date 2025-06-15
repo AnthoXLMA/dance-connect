@@ -48,7 +48,7 @@ function PrivateLayout({ profile, handleLogout }) {
     <div className="pb-20">
       {showNavbar && <BottomNavBar />}
       <Routes>
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard profile={profile} />} />
         <Route path="/map" element={<MapView />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/profile" element={<ProfilePage />} />
@@ -64,42 +64,41 @@ function PrivateLayout({ profile, handleLogout }) {
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profile, setProfile] = useState(null);
-  const [loadingProfile, setLoadingProfile] = useState(true); // true par défaut
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
-useEffect(() => {
-  const token = localStorage.getItem("token");
+  useEffect(() => {
+    const token = localStorage.getItem("token");
 
-  if (!token) {
-    setLoadingProfile(false);
-    return;
-  }
-
-  const fetchProfile = async () => {
-    try {
-      const res = await fetch("http://localhost:3001/api/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) throw new Error("Token invalide");
-
-      const data = await res.json();
-      setIsLoggedIn(true);
-      setProfile(data);
-    } catch (err) {
-      console.error("Erreur lors du chargement du profil :", err.message);
-      setIsLoggedIn(false);
-      setProfile(null);
-      localStorage.removeItem("token");
-    } finally {
+    if (!token) {
       setLoadingProfile(false);
+      return;
     }
-  };
 
-  fetchProfile();
-}, []);
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch("http://localhost:3001/api/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
+        if (!res.ok) throw new Error("Token invalide");
+
+        const data = await res.json();
+        setIsLoggedIn(true);
+        setProfile(data);
+      } catch (err) {
+        console.error("Erreur lors du chargement du profil :", err.message);
+        setIsLoggedIn(false);
+        setProfile(null);
+        localStorage.removeItem("token");
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -115,7 +114,7 @@ useEffect(() => {
     <Router>
       <Routes>
         <Route
-          path="/profile"
+          path="/"
           element={
             isLoggedIn ? (
               profile && Object.keys(profile).length > 1 ? (
