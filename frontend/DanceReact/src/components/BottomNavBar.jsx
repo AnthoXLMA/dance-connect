@@ -1,7 +1,7 @@
 // src/components/BottomNavBar.jsx
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { MapPin, MessageCircle, User, Home } from "lucide-react";
+import { MapPin, MessageCircle, User, Home, HeartHandshake, Calendar } from "lucide-react"; // 👈 ajoute Calendar
 
 export default function BottomNavBar() {
   return (
@@ -34,6 +34,26 @@ export default function BottomNavBar() {
       >
         <MessageCircle size={24} />
         <span className="text-xs">Messages</span>
+      </NavLink>
+
+      <NavLink
+        to="/swipe" // nouvelle route
+        className={({ isActive }) =>
+          `flex flex-col items-center ${isActive ? "text-blue-600" : "text-gray-500"}`
+        }
+      >
+        <HeartHandshake size={24} />
+        <span className="text-xs">Swipe</span>
+      </NavLink>
+
+      <NavLink
+        to="/swipe-events"
+        className={({ isActive }) =>
+          `flex flex-col items-center ${isActive ? "text-blue-600" : "text-gray-500"}`
+        }
+      >
+        <Calendar size={24} />
+        <span className="text-xs">Événements</span>
       </NavLink>
 
       <NavLink

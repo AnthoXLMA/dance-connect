@@ -137,6 +137,10 @@ app.get("/api/messages/received", authenticateToken, (req, res) => {
   res.json(receivedMessages);
 });
 
+const eventsRoutes = require("./routes/events");
+app.use("/api", eventsRoutes);
+
+
 // 🚀 Start server
 app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);

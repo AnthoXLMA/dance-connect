@@ -16,6 +16,11 @@ import MessagesPage from "./pages/MessagesPage";
 import ProfilePage from "./pages/ProfilePage";
 import UserProfileForm from "./components/UserProfileForm";
 import BottomNavBar from "./components/BottomNavBar";
+import Swipe from "./components/Swipe";
+import SwipeEvent from "./components/SwipeEvent";
+import MyEventsLiked from "./pages/MyEventsLiked";
+import TopNavbar from "./components/TopNavbar";  // <-- import TopNavbar
+
 
 // 🔐 Route protégée
 function ProtectedRoute({ isLoggedIn, children }) {
@@ -39,24 +44,38 @@ function ProfileWrapper({ profile, setProfile }) {
   return <Navigate to="/dashboard" />;
 }
 
-// 🌐 Layout avec navigation et déconnexion
+// 🌐 Layout avec navigation et déconnexion + TopNavbar en haut
 function PrivateLayout({ profile, handleLogout }) {
   const location = useLocation();
   const showNavbar = !["/login", "/signup"].includes(location.pathname);
 
   return (
-    <div className="pb-20">
-      {showNavbar && <BottomNavBar />}
-      <Routes>
-        <Route path="/dashboard" element={<Dashboard profile={profile} />} />
-        <Route path="/map" element={<MapView />} />
-        <Route path="/messages" element={<MessagesPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-      </Routes>
+    <div className="flex flex-col min-h-screen pb-20 relative">
+      {/* Top Navbar visible si pas sur login/signup */}
+      {showNavbar && <TopNavbar />}
 
-      <div className="text-center my-4">
-        <button onClick={handleLogout}>Se déconnecter</button>
+      <div className="flex-grow">
+        <Routes>
+          <Route path="/dashboard" element={<Dashboard profile={profile} />} />
+          <Route path="/map" element={<MapView />} />
+          <Route path="/messages" element={<MessagesPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/swipe" element={<Swipe />} />
+          <Route path="/swipe-events" element={<SwipeEvent />} />
+          <Route path="/mes-evenements-likes" element={<MyEventsLiked />} />
+        </Routes>
+
+        <div className="text-center my-4">
+          <button onClick={handleLogout}>Se déconnecter</button>
+        </div>
       </div>
+
+      {/* Bottom Navbar */}
+      {showNavbar && (
+        <div className="fixed bottom-0 left-0 right-0 z-50">
+          <BottomNavBar />
+        </div>
+      )}
     </div>
   );
 }
