@@ -15,76 +15,58 @@ function getDistanceKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// Événements fictifs
-const sampleEvents = [
-  {
-    id: 301,
-    name: "Soirée Salsa à Lyon",
-    lat: 45.75,
-    lng: 4.85,
-    date: "2025-07-10",
-    description: "Ambiance caliente et DJ latino 🎶",
-  },
-  {
-    id: 302,
-    name: "West Coast à Toulouse",
-    lat: 43.6,
-    lng: 1.44,
-    date: "2025-07-14",
-    description: "Niveau débutant à confirmé 🕺",
-  },
-  {
-    id: 303,
-    name: "Bal Tango à Nantes",
-    lat: 47.22,
-    lng: -1.55,
-    date: "2025-07-18",
-    description: "Milonga en plein air 💃",
-  },
-  {
-    id: 304,
-    name: "Kompa sur la plage à Quiberon",
-    lat: 47.4833,
-    lng: -3.1167,
-    date: "2025-07-22",
-    description: "Kompa sunset vibes au bord de la mer 🌅",
-  },
-  {
-    id: 305,
-    name: "Kizomba à Vannes",
-    lat: 47.6559,
-    lng: -2.7603,
-    date: "2025-07-25",
-    description: "Soirée kizomba avec DJ en direct 🎧",
-  },
-];
-
 export default function SwipeEvent() {
-  const token = localStorage.getItem("token");
-
+  // Token stocké en localStorage
+  const [token, setToken] = useState(null);
   const [index, setIndex] = useState(0);
   const [nearbyEvents, setNearbyEvents] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
 
   useEffect(() => {
+    const storedToken = localStorage.getItem("token");
+    setToken(storedToken);
+  }, []);
+
+  // Récupérer la localisation utilisateur
+  useEffect(() => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setUserLocation({ lat: latitude, lng: longitude });
-
-        const filtered = sampleEvents.filter((event) => {
-          const distance = getDistanceKm(latitude, longitude, event.lat, event.lng);
-          return distance <= 1000;
-        });
-
-        setNearbyEvents(filtered);
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       },
       (err) => {
         console.error("Erreur localisation", err);
-        setNearbyEvents(sampleEvents); // fallback
+        setNearbyEvents([]); // fallback si pas de localisation
       }
     );
   }, []);
+
+  // Récupérer les events depuis le backend une fois la localisation connue
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        const res = await fetch("http://localhost:3001/api/events");
+        if (!res.ok) throw new Error("Erreur lors du chargement des événements");
+        const events = await res.json();
+
+        if (userLocation) {
+          // Filtrer par distance max 1000 km
+          const filtered = events.filter((event) => {
+            const distance = getDistanceKm(userLocation.lat, userLocation.lng, event.lat, event.lng);
+            return distance <= 1000;
+          });
+          setNearbyEvents(filtered);
+        } else {
+          setNearbyEvents(events);
+        }
+      } catch (error) {
+        console.error(error);
+        setNearbyEvents([]);
+      }
+    }
+    if (userLocation) {
+      fetchEvents();
+    }
+  }, [userLocation]);
 
   if (!userLocation && nearbyEvents.length === 0) {
     return <div className="text-center mt-20">Recherche d’événements proches...</div>;
@@ -96,13 +78,19 @@ export default function SwipeEvent() {
 
   const event = nearbyEvents[index % nearbyEvents.length];
 
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
   const handleAttend = async (eventId) => {
+    if (!token) {
+      alert("Vous devez être connecté pour participer à un événement.");
+      return;
+    }
     try {
       await fetch(`http://localhost:3001/api/events/${eventId}/attend`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          ...authHeaders,
         },
       });
       setIndex((prev) => prev + 1);
@@ -112,27 +100,40 @@ export default function SwipeEvent() {
   };
 
   const handleLike = async (eventId) => {
+    if (!token) {
+      alert("Vous devez être connecté pour liker un événement.");
+      return;
+    }
     try {
-      await fetch(`http://localhost:3001/api/events/${eventId}/like`, {
+      const res = await fetch(`http://localhost:3001/api/events/${eventId}/like`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (!res.ok) {
+        throw new Error(`Erreur HTTP: ${res.status}`);
+      }
+
       setIndex((prev) => prev + 1);
     } catch (error) {
-      console.error("Erreur like :", error);
+      console.error("Erreur lors du like :", error);
     }
   };
 
   const handleIgnore = async (eventId) => {
+    if (!token) {
+      alert("Vous devez être connecté pour ignorer un événement.");
+      return;
+    }
     try {
       await fetch(`http://localhost:3001/api/events/${eventId}/ignore`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          ...authHeaders,
         },
       });
       setIndex((prev) => prev + 1);
@@ -145,7 +146,7 @@ export default function SwipeEvent() {
     <div className="flex flex-col items-center justify-center h-full p-4">
       <div className="bg-white shadow rounded p-6 max-w-sm w-full text-center">
         <h2 className="text-xl font-bold mb-1">{event.name}</h2>
-        <p className="text-gray-600 mb-1">{event.date}</p>
+        <p className="text-gray-600 mb-1">{new Date(event.date).toLocaleDateString()}</p>
         <p className="mb-4">{event.description}</p>
 
         <div className="flex justify-around mt-4">
