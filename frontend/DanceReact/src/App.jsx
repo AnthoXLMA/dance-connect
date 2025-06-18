@@ -19,8 +19,7 @@ import BottomNavBar from "./components/BottomNavBar";
 import Swipe from "./components/Swipe";
 import SwipeEvent from "./components/SwipeEvent";
 import MyEventsLiked from "./pages/MyEventsLiked";
-import TopNavbar from "./components/TopNavbar";  // <-- import TopNavbar
-
+import TopNavbar from "./components/TopNavbar";
 
 // 🔐 Route protégée
 function ProtectedRoute({ isLoggedIn, children }) {
@@ -62,7 +61,7 @@ function PrivateLayout({ profile, handleLogout }) {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/swipe" element={<Swipe />} />
           <Route path="/swipe-events" element={<SwipeEvent />} />
-          <Route path="/mes-evenements-likes" element={<MyEventsLiked />} />
+          <Route path="/liked-events" element={<MyEventsLiked />} />
         </Routes>
 
         <div className="text-center my-4">
@@ -149,7 +148,29 @@ export default function App() {
 
         <Route
           path="/login"
-          element={<Login onLogin={() => setIsLoggedIn(true)} />}
+          element={<Login onLogin={() => {
+            setIsLoggedIn(true);
+            // recharge manuellement le profil ici
+            const token = localStorage.getItem("token");
+            if (token) {
+              fetch("http://localhost:3001/api/profile", {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              })
+                .then((res) => {
+                  if (!res.ok) throw new Error("Échec du profil");
+                  return res.json();
+                })
+                .then((data) => setProfile(data))
+                .catch((err) => {
+                  console.error("Erreur après login :", err.message);
+                  setIsLoggedIn(false);
+                  localStorage.removeItem("token");
+                });
+            }
+          }} />
+          }
         />
 
         <Route

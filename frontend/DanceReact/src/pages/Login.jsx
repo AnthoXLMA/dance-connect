@@ -27,7 +27,7 @@ export default function Login({ onLogin }) {
         localStorage.setItem("token", token);
         alert("Connexion réussie !");
         if (onLogin) onLogin(); // Déclenche App.jsx → isLoggedIn = true
-        //navigate("/dashboard");
+        navigate("/dashboard");
       })
       .catch((err) => alert(err.message));
   };
