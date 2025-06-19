@@ -1,5 +1,5 @@
-// src/pages/MyEventsLiked.jsx
 import React, { useEffect, useState } from "react";
+import EventCard from "../components/EventCard";
 
 export default function MyEventsLiked() {
   const [likedEvents, setLikedEvents] = useState([]);
@@ -41,32 +41,18 @@ export default function MyEventsLiked() {
   }, [token]);
 
   if (loading) return <div className="text-center mt-10">Chargement...</div>;
-
   if (error) return <div className="text-center text-red-600 mt-10">Erreur : {error}</div>;
-
-  if (likedEvents.length === 0) {
+  if (likedEvents.length === 0)
     return <div className="text-center mt-10">Aucun événement liké pour l’instant.</div>;
-  }
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Mes événements likés ❤️</h2>
-      <ul className="space-y-4">
+    <div className="p-6 max-w-4xl mx-auto">
+      <h2 className="text-3xl font-extrabold mb-6 text-center">❤️ Mes événements likés</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {likedEvents.map((event) => (
-          <li key={event.id} className="p-4 border rounded shadow">
-            <h3 className="text-xl font-semibold">{event.name}</h3>
-            <p className="text-gray-600">
-              {new Date(event.date).toLocaleDateString("fr-FR", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
-            <p>{event.description}</p>
-          </li>
+          <EventCard key={event.id} event={event} />
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

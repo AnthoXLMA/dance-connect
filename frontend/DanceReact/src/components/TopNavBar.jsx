@@ -10,7 +10,10 @@ export default function TopNavbar() {
           to="/liked-events"
           className="bg-white text-blue-600 px-3 py-1 rounded hover:bg-gray-200 transition"
         >
-          ❤️ Événements likés
+          Mes Événements
+        </Link>
+        <Link to="/liked-users">
+          Mes Danseurs
         </Link>
       </div>
     </nav>

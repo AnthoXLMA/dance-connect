@@ -8,12 +8,29 @@ datasource db {
 }
 
 model User {
-  id       Int    @id @default(autoincrement())
-  email    String @unique
-  password String
-  firstName String?
-  likes    Like[]
+  id         Int     @id @default(autoincrement())
+  email      String  @unique
+  password   String
+  firstName  String?
+
+  likes      Like[]
+
+  swipesGiven    Swipe[] @relation("UserSwipesGiven")
+  swipesReceived Swipe[] @relation("UserSwipesReceived")
 }
+
+model Swipe {
+  id        Int  @id @default(autoincrement())
+  swiperId  Int
+  swipedId  Int
+  liked     Boolean
+
+  swiper    User @relation("UserSwipesGiven", fields: [swiperId], references: [id])
+  swiped    User @relation("UserSwipesReceived", fields: [swipedId], references: [id])
+
+  @@unique([swiperId, swipedId])
+}
+
 
 model Event {
   id          Int      @id @default(autoincrement())
@@ -34,3 +51,4 @@ model Like {
 
   @@unique([userId, eventId])
 }
+

@@ -19,7 +19,9 @@ import BottomNavBar from "./components/BottomNavBar";
 import Swipe from "./components/Swipe";
 import SwipeEvent from "./components/SwipeEvent";
 import MyEventsLiked from "./pages/MyEventsLiked";
+import LikedUsers from "./pages/LikedUsers";
 import TopNavbar from "./components/TopNavbar";
+
 
 // 🔐 Route protégée
 function ProtectedRoute({ isLoggedIn, children }) {
@@ -62,6 +64,7 @@ function PrivateLayout({ profile, handleLogout }) {
           <Route path="/swipe" element={<Swipe />} />
           <Route path="/swipe-events" element={<SwipeEvent />} />
           <Route path="/liked-events" element={<MyEventsLiked />} />
+          <Route path="/liked-users" element={<LikedUsers />} />
         </Routes>
 
         <div className="text-center my-4">
