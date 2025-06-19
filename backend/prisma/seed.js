@@ -1,12 +1,27 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-
 async function main() {
-  // Supprimer les anciens événements
+  console.log("🧹 Suppression des anciennes données...");
   await prisma.like.deleteMany();
+  await prisma.swipe.deleteMany();
   await prisma.event.deleteMany();
+  await prisma.user.deleteMany();
 
+  console.log("👤 Création des utilisateurs...");
+  const users = await Promise.all([
+    prisma.user.create({
+      data: { email: 'alice@example.com', password: 'hashedpassword', firstName: 'Alice' },
+    }),
+    prisma.user.create({
+      data: { email: 'bob@example.com', password: 'hashedpassword', firstName: 'Bob' },
+    }),
+    prisma.user.create({
+      data: { email: 'carol@example.com', password: 'hashedpassword', firstName: 'Carol' },
+    }),
+  ]);
+
+  console.log("📍 Création d'événements fixes...");
   const sampleEvents = [
     {
       name: "Soirée Salsa à Lyon",
@@ -45,103 +60,44 @@ async function main() {
     },
   ];
 
-  // Générer des événements supplémentaires (45 de plus)
-  const cities = [
-    { name: "Paris", lat: 48.8566, lng: 2.3522 },
-    { name: "Marseille", lat: 43.2965, lng: 5.3698 },
-    { name: "Bordeaux", lat: 44.8378, lng: -0.5792 },
-    { name: "Montpellier", lat: 43.6108, lng: 3.8767 },
-    { name: "Nice", lat: 43.7102, lng: 7.2620 },
-    { name: "Strasbourg", lat: 48.5734, lng: 7.7521 },
-    { name: "Lille", lat: 50.6292, lng: 3.0573 },
-    { name: "Rennes", lat: 48.1173, lng: -1.6778 },
-    { name: "Grenoble", lat: 45.1885, lng: 5.7245 },
-    { name: "Dijon", lat: 47.3220, lng: 5.0415 },
-  ];
-
-  const danceStyles = [
-    "Salsa",
-    "West Coast Swing",
-    "Tango",
-    "Kompa",
-    "Kizomba",
-    "Bachata",
-    "Zouk",
-    "Lindy Hop",
-    "Charleston",
-    "Hip Hop",
-  ];
-
-  const descriptions = [
-    "Ambiance festive et conviviale 🎉",
-    "Cours pour tous les niveaux 🕺",
-    "DJ live avec sons entraînants 🎧",
-    "Soirée sous les étoiles ✨",
-    "Bar ouvert toute la nuit 🍸",
-    "Compétition amicale entre danseurs 🏆",
-    "Venez découvrir cette danse magnifique 💃",
-    "Ambiance chaleureuse et accueillante 🤗",
-    "Entrée gratuite avant 22h 🕙",
-    "Lieu mythique de la ville 🏛️",
-  ];
-
-  // Commencer à l'id 306 pour éviter conflit avec tes 5 événements
-  let idCounter = 306;
-
-  for (let i = 0; i < 45; i++) {
-    const city = cities[i % cities.length];
-    const dance = danceStyles[i % danceStyles.length];
-    const desc = descriptions[i % descriptions.length];
-    const date = new Date(2025, 6, 26 + i); // juillet 26 + i jours
-
-    sampleEvents.push({
-      name: `${dance} à ${city.name}`,
-      lat: city.lat + (Math.random() - 0.5) * 0.02, // petit offset aléatoire pour réalisme
-      lng: city.lng + (Math.random() - 0.5) * 0.02,
-      date,
-      description: desc,
+  for (const event of sampleEvents) {
+    await prisma.event.create({
+      data: event,
     });
-    idCounter++;
   }
 
-  // Insert events dans la DB
-  for (const event of sampleEvents) {
-    await prisma.event.upsert({
-      where: { name: event.name },
-      update: {},
-      create: {
-        name: event.name,
-        lat: event.lat,
-        lng: event.lng,
-        date: event.date,
-        description: event.description,
+  console.log("🗺️ Génération de 100 événements aléatoires en France...");
+  for (let i = 1; i <= 100; i++) {
+    const randomLat = 42 + Math.random() * 9;  // entre 42 et 51
+    const randomLng = -5 + Math.random() * 13; // entre -5 et 8
+
+    await prisma.event.create({
+      data: {
+        name: `Événement #${i}`,
+        lat: parseFloat(randomLat.toFixed(5)),
+        lng: parseFloat(randomLng.toFixed(5)),
+        date: new Date(Date.now() + i * 86400000), // 1 par jour
+        description: `Événement auto-généré n°${i} en France 🇫🇷`,
       },
     });
   }
 
-  console.log(`✅ ${sampleEvents.length} événements insérés/mis à jour.`);
-}
-
-main()
-  .catch(e => {
-    console.error(e);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
+  console.log("🤝 Insertion de swipes...");
+  await prisma.swipe.createMany({
+    data: [
+      { swiperId: users[0].id, swipedId: users[1].id, liked: true },
+      { swiperId: users[1].id, swipedId: users[0].id, liked: false },
+      { swiperId: users[0].id, swipedId: users[2].id, liked: true },
+      { swiperId: users[2].id, swipedId: users[0].id, liked: true },
+    ],
   });
 
-
-await prisma.event.createMany({
-  data: sampleEvents,
-});
-
-
-  console.log("✅ Événements seedés !");
+  console.log("✅ Seed terminé : 3 users, 105 événements, 4 swipes.");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("❌ Erreur lors du seed :", e);
     process.exit(1);
   })
   .finally(async () => {
