@@ -22,7 +22,7 @@ import SwipeEvent from "./components/SwipeEvent";
 import MyEventsLiked from "./pages/MyEventsLiked";
 import LikedUsers from "./pages/LikedUsers";
 import TopNavbar from "./components/TopNavbar";
-
+import ProfileEdit from "./pages/ProfileEdit";
 
 // 🔐 Route protégée
 function ProtectedRoute({ isLoggedIn, children }) {
@@ -32,12 +32,25 @@ function ProtectedRoute({ isLoggedIn, children }) {
 // ⚙️ Redirection conditionnelle vers formulaire si profil incomplet
 function ProfileWrapper({ profile, setProfile }) {
   const navigate = useNavigate();
-  const isProfileComplete = profile && Object.keys(profile).length > 1;
+  const token = localStorage.getItem("token");
+  const isProfileComplete = profile && profile.firstName; // adapte selon ta structure
 
-  const handleProfileSaved = (data) => {
+  const handleProfileSaved = async () => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+  try {
+    const res = await fetch("http://localhost:3001/api/users/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Erreur récupération profil");
+    const data = await res.json();
     setProfile(data);
     navigate("/dashboard");
-  };
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 
   if (!isProfileComplete) {
     return <UserProfileForm onProfileSaved={handleProfileSaved} />;
@@ -46,8 +59,35 @@ function ProfileWrapper({ profile, setProfile }) {
   return <Navigate to="/dashboard" />;
 }
 
+// Wrapper pour édition de profil avec navigation après sauvegarde
+function UserProfileEditWrapper({ profile, setProfile }) {
+  const navigate = useNavigate();
+
+  return (
+    <UserProfileForm
+      defaultValues={profile}
+      onProfileSaved={async () => {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        try {
+          const res = await fetch("http://localhost:3001/api/users/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+            console.log(token);
+          if (!res.ok) throw new Error("Erreur récupération profil");
+          const data = await res.json();
+          setProfile(data);
+          navigate("/profile");
+        } catch (err) {
+          console.error(err);
+        }
+      }}
+    />
+  );
+}
+
 // 🌐 Layout avec navigation et déconnexion + TopNavbar en haut
-function PrivateLayout({ profile, handleLogout }) {
+function PrivateLayout({ isLoggedIn, profile, setProfile, handleLogout }) {
   const location = useLocation();
   const showNavbar = !["/login", "/signup"].includes(location.pathname);
 
@@ -61,7 +101,26 @@ function PrivateLayout({ profile, handleLogout }) {
           <Route path="/dashboard" element={<Dashboard profile={profile} />} />
           <Route path="/map" element={<MapView />} />
           <Route path="/messages" element={<MessagesPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile" element={<ProfilePage profile={profile} />} />
+
+          <Route
+            path="/profile-edit"
+            element={
+              <ProtectedRoute isLoggedIn={isLoggedIn}>
+                <ProfileEdit profile={profile} setProfile={setProfile} />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/user-profile-form"
+            element={
+              <ProtectedRoute isLoggedIn={isLoggedIn}>
+                <UserProfileEditWrapper profile={profile} setProfile={setProfile} />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="/swipe" element={<Swipe />} />
           <Route path="/swipe-events" element={<SwipeEvent />} />
           <Route path="/liked-events" element={<MyEventsLiked />} />
@@ -98,7 +157,7 @@ export default function App() {
 
     const fetchProfile = async () => {
       try {
-        const res = await fetch("http://localhost:3001/api/profile", {
+        const res = await fetch("http://localhost:3001/api/users/me", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -139,7 +198,7 @@ export default function App() {
           path="/"
           element={
             isLoggedIn ? (
-              profile && Object.keys(profile).length > 1 ? (
+              profile && profile.firstName ? (
                 <Navigate to="/dashboard" />
               ) : (
                 <Navigate to="/profile-form" />
@@ -152,28 +211,31 @@ export default function App() {
 
         <Route
           path="/login"
-          element={<Login onLogin={() => {
-            setIsLoggedIn(true);
-            // recharge manuellement le profil ici
-            const token = localStorage.getItem("token");
-            if (token) {
-              fetch("http://localhost:3001/api/profile", {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              })
-                .then((res) => {
-                  if (!res.ok) throw new Error("Échec du profil");
-                  return res.json();
-                })
-                .then((data) => setProfile(data))
-                .catch((err) => {
-                  console.error("Erreur après login :", err.message);
-                  setIsLoggedIn(false);
-                  localStorage.removeItem("token");
-                });
-            }
-          }} />
+          element={
+            <Login
+              onLogin={() => {
+                setIsLoggedIn(true);
+                // Recharge manuellement le profil ici
+                const token = localStorage.getItem("token");
+                if (token) {
+                  fetch("http://localhost:3001/api/users/me", {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                    },
+                  })
+                    .then((res) => {
+                      if (!res.ok) throw new Error("Échec du profil");
+                      return res.json();
+                    })
+                    .then((data) => setProfile(data))
+                    .catch((err) => {
+                      console.error("Erreur après login :", err.message);
+                      setIsLoggedIn(false);
+                      localStorage.removeItem("token");
+                    });
+                }
+              }}
+            />
           }
         />
 
@@ -195,7 +257,12 @@ export default function App() {
           path="/*"
           element={
             <ProtectedRoute isLoggedIn={isLoggedIn}>
-              <PrivateLayout profile={profile} handleLogout={handleLogout} />
+              <PrivateLayout
+                isLoggedIn={isLoggedIn}
+                profile={profile}
+                setProfile={setProfile}
+                handleLogout={handleLogout}
+              />
             </ProtectedRoute>
           }
         />

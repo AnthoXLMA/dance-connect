@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import Select from "react-select";
+import { useNavigate } from "react-router-dom";
 
 const danceStyles = [
   { value: "salsa", label: "Salsa" },
@@ -17,65 +18,111 @@ const levels = [
   { value: "advanced", label: "Avancé" },
 ];
 
-export default function UserProfileForm({ onProfileSaved }) {
-  const { register, handleSubmit, control, watch } = useForm();
-  const [location, setLocation] = useState("");
-  const [geoLocation, setGeoLocation] = useState(null);
+export default function UserProfileForm({ onProfileSaved, defaultValues }) {
+  const { register, handleSubmit, control, watch } = useForm({
+    defaultValues,
+  });
+
+  // Local state pour location, car input non contrôlé par react-hook-form
+  const [location, setLocation] = useState(defaultValues?.location || "");
+  const [geoLocation, setGeoLocation] = useState(defaultValues?.geoLocation || null);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   const selectedDances = watch("dances") || [];
 
   const onSubmit = async (data) => {
     setError(null);
-
     const token = localStorage.getItem("token");
     if (!token) {
       setError("Utilisateur non authentifié.");
       return;
     }
 
-    // Préparation du body avec la localisation manuelle et GPS
+    const dancesValues = (data.dances || []).map((d) => d.value);
+    const levelsData = {};
+    if (data.levels) {
+      Object.entries(data.levels).forEach(([danceKey, levelObj]) => {
+        levelsData[danceKey] = levelObj?.value || null;
+      });
+    }
+
     const body = {
       ...data,
-      location,
+      dances: dancesValues,
+      levels: levelsData,
+      location, // valeur locale mise à jour
       geoLocation,
+      lat: geoLocation?.lat || null,
+      lng: geoLocation?.lng || null,
     };
 
     try {
-      const res = await fetch("http://localhost:3001/api/profile", {
-        method: "POST",
+      const res = await fetch("http://localhost:3001/api/users/me", {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
       });
 
       if (!res.ok) {
-        const errorData = await res.json();
-        setError(errorData.error || "Erreur lors de l'enregistrement du profil.");
+        let errorData;
+        try {
+          errorData = await res.json();
+        } catch (e) {
+          console.error("Erreur parsing JSON:", e);
+        }
+        setError(errorData?.error || `Erreur ${res.status} lors de l'enregistrement.`);
         return;
       }
 
       const savedProfile = await res.json();
+      if (onProfileSaved) onProfileSaved(savedProfile);
 
-      // Appel du callback parent après succès
-      if (onProfileSaved) {
-        onProfileSaved(savedProfile);  // <-- ici tu envoies les données exactes du serveur
+      // FIX 1 : recharge le profil avant navigation
+      const freshRes = await fetch("http://localhost:3001/api/users/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!freshRes.ok) {
+        let errorData;
+        try {
+          errorData = await freshRes.json();
+        } catch (e) {
+          console.error("Erreur parsing JSON lors du GET:", e);
+        }
+        setError(errorData?.error || `Erreur ${freshRes.status} lors du rechargement du profil.`);
+        return;
       }
+
+      const freshProfile = await freshRes.json();
+      console.log("Profil rechargé :", freshProfile);
+
+      navigate("/dashboard");
     } catch (err) {
-      setError("Erreur réseau ou serveur.");
+      console.error("Erreur réseau/serveur :", err);
+      setError(`Erreur réseau ou serveur : ${err.message}`);
     }
   };
 
   const handleGetGPS = () => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        setGeoLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-      });
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setGeoLocation(coords);
+        },
+        () => setError("Impossible d'obtenir la position GPS.")
+      );
+    } else {
+      setError("La géolocalisation n'est pas supportée par ce navigateur.");
     }
   };
 
@@ -83,7 +130,16 @@ export default function UserProfileForm({ onProfileSaved }) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-xl mx-auto p-4">
       <h2 className="text-xl font-bold">Créer mon profil</h2>
 
-      {/* Danses pratiquées */}
+      <div>
+        <label className="block mb-1">Prénom</label>
+        <input
+          type="text"
+          {...register("firstName")}
+          className="w-full border p-2 rounded"
+          placeholder="Votre prénom"
+        />
+      </div>
+
       <div>
         <label className="block mb-1">Danses pratiquées</label>
         <Controller
@@ -101,12 +157,9 @@ export default function UserProfileForm({ onProfileSaved }) {
         />
       </div>
 
-      {/* Niveau par danse */}
       {selectedDances.map((dance) => (
         <div key={dance.value}>
-          <label className="block mb-1">
-            Niveau pour {dance.label}
-          </label>
+          <label className="block mb-1">Niveau pour {dance.label}</label>
           <Controller
             control={control}
             name={`levels.${dance.value}`}
@@ -122,7 +175,6 @@ export default function UserProfileForm({ onProfileSaved }) {
         </div>
       ))}
 
-      {/* Localisation manuelle */}
       <div>
         <label className="block mb-1">Ville</label>
         <input
@@ -134,7 +186,6 @@ export default function UserProfileForm({ onProfileSaved }) {
         />
       </div>
 
-      {/* Localisation GPS */}
       <div>
         <button
           type="button"
@@ -150,7 +201,6 @@ export default function UserProfileForm({ onProfileSaved }) {
         )}
       </div>
 
-      {/* Disponibilités */}
       <div>
         <label className="block mb-1">Disponibilités</label>
         <textarea
@@ -160,7 +210,6 @@ export default function UserProfileForm({ onProfileSaved }) {
         />
       </div>
 
-      {/* Description personnelle */}
       <div>
         <label className="block mb-1">Description</label>
         <textarea

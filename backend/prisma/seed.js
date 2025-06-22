@@ -40,49 +40,76 @@ async function main() {
     users.push(user);
   }
 
+  // Ajout d’un utilisateur de test avec toutes les propriétés complexes
+  const testUser = await prisma.user.create({
+    data: {
+      email: "testuser@test.com",
+      firstName: "Test",
+      password: hashedPassword,
+      lat: 48.85,
+      lng: 2.35,
+      dances: ["salsa", "bachata"],
+      levels: {
+        salsa: "advanced",
+        bachata: "intermediate",
+      },
+      availability: "Soirs de semaine et week-ends",
+      bio: "Je danse depuis 10 ans et adore la salsa !",
+      location: "Paris",
+      geoLocation: { lat: 48.85, lng: 2.35 },
+    },
+  });
+  users.push(testUser);
+
   console.log("📍 Création d'événements fixes avec organisateurs...");
   const sampleEvents = [
-    {
-      name: "Soirée Salsa à Lyon",
-      lat: 45.75,
-      lng: 4.85,
-      date: new Date("2025-07-10"),
-      description: "Ambiance caliente et DJ latino 🎶",
-      organizerId: users[0].id,
-    },
-    {
-      name: "West Coast à Toulouse",
-      lat: 43.6,
-      lng: 1.44,
-      date: new Date("2025-07-14"),
-      description: "Niveau débutant à confirmé 🕺",
-      organizerId: users[1].id,
-    },
-    {
-      name: "Bal Tango à Nantes",
-      lat: 47.22,
-      lng: -1.55,
-      date: new Date("2025-07-18"),
-      description: "Milonga en plein air 💃",
-      organizerId: users[2].id,
-    },
-    {
-      name: "Kompa sur la plage à Quiberon",
-      lat: 47.4833,
-      lng: -3.1167,
-      date: new Date("2025-07-22"),
-      description: "Kompa sunset vibes au bord de la mer 🌅",
-      organizerId: users[3].id,
-    },
-    {
-      name: "Kizomba à Vannes",
-      lat: 47.6559,
-      lng: -2.7603,
-      date: new Date("2025-07-25"),
-      description: "Soirée kizomba avec DJ en direct 🎧",
-      organizerId: users[4].id,
-    },
-  ];
+  {
+    name: "Soirée Salsa à Lyon",
+    lat: 45.75,
+    lng: 4.85,
+    date: new Date("2025-07-10"),
+    description: "Ambiance caliente et DJ latino 🎶",
+    organizerId: users[0].id,
+    dances: ["salsa"],
+  },
+  {
+    name: "West Coast à Toulouse",
+    lat: 43.6,
+    lng: 1.44,
+    date: new Date("2025-07-14"),
+    description: "Niveau débutant à confirmé 🕺",
+    organizerId: users[1].id,
+    dances: ["westcoastswing"],
+  },
+  {
+    name: "Bal Tango à Nantes",
+    lat: 47.22,
+    lng: -1.55,
+    date: new Date("2025-07-18"),
+    description: "Milonga en plein air 💃",
+    organizerId: users[2].id,
+    dances: ["tango"],
+  },
+  {
+    name: "Kompa sur la plage à Quiberon",
+    lat: 47.4833,
+    lng: -3.1167,
+    date: new Date("2025-07-22"),
+    description: "Kompa sunset vibes au bord de la mer 🌅",
+    organizerId: users[3].id,
+    dances: ["kompa"],
+  },
+  {
+    name: "Kizomba à Vannes",
+    lat: 47.6559,
+    lng: -2.7603,
+    date: new Date("2025-07-25"),
+    description: "Soirée kizomba avec DJ en direct 🎧",
+    organizerId: users[4].id,
+    dances: ["kizomba"],
+  },
+];
+
 
   for (const event of sampleEvents) {
     await prisma.event.create({ data: event });
