@@ -8,14 +8,22 @@ datasource db {
 }
 
 model User {
-  id         Int      @id @default(autoincrement())
-  email      String   @unique
-  password   String
-  firstName  String?
-  lastName   String?
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  password     String
+  firstName   String?
+  lastName    String?
+  bio         String?
+  location    String?
+
+
+  geoLocation  Json?
+  dances       String[]
+  levels       Json?
+  availability String?       // ← AJOUTE SEULEMENT CELUI-CI
   username   String?  @unique
   avatarUrl  String?
-  bio        String?
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

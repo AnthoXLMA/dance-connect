@@ -13,7 +13,14 @@ import "leaflet/dist/leaflet.css";
 function ChangeMapView({ center }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, map.getZoom(), { animate: true });
+    // Ne changer la vue que si la position est différente (évite les sauts inutiles)
+    const currentCenter = map.getCenter();
+    if (
+      currentCenter.lat !== center[0] ||
+      currentCenter.lng !== center[1]
+    ) {
+      map.setView(center, map.getZoom(), { animate: true });
+    }
   }, [center, map]);
   return null;
 }
@@ -42,6 +49,16 @@ export default function Dashboard() {
   const [chatUser, setChatUser] = useState(null);
   const token = localStorage.getItem("token");
 
+  const danceStyles = [
+    { value: "salsa", label: "Salsa" },
+    { value: "bachata", label: "Bachata" },
+    { value: "kizomba", label: "Kizomba" },
+    { value: "kompa", label: "Kompa" },
+    { value: "westcoastswing", label: "West Coast Swing" },
+    { value: "rock", label: "Rock" },
+    { value: "tango", label: "Tango" },
+  ];
+
   // Chargement du profil une fois au montage
   useEffect(() => {
     async function fetchProfile() {
@@ -52,10 +69,18 @@ export default function Dashboard() {
         });
         const data = await resp.json();
         setProfile(data);
-        console.log("Profil reçu:", data); // 👈 Ajoute ceci
-        // On positionne la map sur la position du profil si dispo
-        if (data?.lat && data?.lng) {
+        console.log("Profil reçu:", data);
+
+        if (
+          typeof data.lat === "number" && !isNaN(data.lat) &&
+          typeof data.lng === "number" && !isNaN(data.lng)
+        ) {
           setPosition([data.lat, data.lng]);
+        } else {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => setPosition([pos.coords.latitude, pos.coords.longitude]),
+            () => console.warn("Géoloc non disponible, position par défaut utilisée")
+          );
         }
       } catch (err) {
         console.error(err);
@@ -64,40 +89,69 @@ export default function Dashboard() {
     fetchProfile();
   }, [token]);
 
-  // Chargement des événements et danseurs proches dès que le profil est chargé
+  // Chargement des événements et danseurs proches dès que la position est valide
   useEffect(() => {
-    if (!profile) return;
+    if (!token || !position || !Array.isArray(position)) return;
+
+    const [lat, lng] = position;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      console.warn("Position invalide, pas de chargement nearby.");
+      return;
+    }
+
     async function loadNearby() {
       try {
+        console.log("Chargement nearby à partir de :", lat, lng);
+
         const [eventsRes, dancersRes] = await Promise.all([
           fetch("http://localhost:3001/api/events", {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch("http://localhost:3001/api/users/nearby", {
+          fetch(`http://localhost:3001/api/users/nearby?lat=${lat}&lng=${lng}`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
+
+        if (!eventsRes.ok) {
+          const errData = await eventsRes.json().catch(() => ({}));
+          throw new Error(
+            errData.error ||
+              `Erreur HTTP ${eventsRes.status} lors du chargement des événements`
+          );
+        }
+
+        if (!dancersRes.ok) {
+          const errData = await dancersRes.json().catch(() => ({}));
+          throw new Error(
+            errData.error ||
+              `Erreur HTTP ${dancersRes.status} lors du chargement des danseurs`
+          );
+        }
+
         const eventsData = await eventsRes.json();
         const dancersData = await dancersRes.json();
 
         console.log("Events reçus:", eventsData);
         console.log("Danseurs reçus:", dancersData);
 
-        setNearbyEvents(eventsData);
-        setNearbyDancers(dancersData);
+        setNearbyEvents(Array.isArray(eventsData) ? eventsData : []);
+        setNearbyDancers(Array.isArray(dancersData) ? dancersData : []);
       } catch (err) {
-        console.error("Erreur loading nearby:", err);
+        console.error("Erreur loading nearby:", err.message);
       }
     }
-    loadNearby();
-  }, [profile, token]);
 
-  const toggleDance = (dance) => {
+    loadNearby();
+  }, [position, token]);
+
+  // Toggle sélection danse par 'value'
+  const toggleDance = (danceValue) => {
     setSelectedDances((prev) =>
-      prev.includes(dance) ? prev.filter((d) => d !== dance) : [...prev, dance]
+      prev.includes(danceValue) ? prev.filter((d) => d !== danceValue) : [...prev, danceValue]
     );
   };
 
+  // Filtrage des événements et danseurs selon selectedDances (par valeurs)
   const filteredEvents = nearbyEvents.filter(
     (ev) =>
       selectedDances.length === 0 ||
@@ -108,6 +162,8 @@ export default function Dashboard() {
       selectedDances.length === 0 ||
       (us.dances && us.dances.some((d) => selectedDances.includes(d)))
   );
+
+  console.log("profile:", profile);
 
   if (!profile) return <p>Chargement du profil...</p>;
 
@@ -134,25 +190,17 @@ export default function Dashboard() {
             >
               Ma position
             </button>
-            {[
-              "Salsa",
-              "Bachata",
-              "Kizomba",
-              "Kompa",
-              "West Coast Swing",
-              "Rock",
-              "Tango",
-            ].map((dance) => (
+            {danceStyles.map(({ value, label }) => (
               <label
-                key={dance}
+                key={value}
                 className="flex items-center gap-2 cursor-pointer select-none"
               >
                 <input
                   type="checkbox"
-                  checked={selectedDances.includes(dance)}
-                  onChange={() => toggleDance(dance)}
+                  checked={selectedDances.includes(value)}
+                  onChange={() => toggleDance(value)}
                 />
-                {dance}
+                {label}
               </label>
             ))}
           </div>
@@ -223,8 +271,12 @@ export default function Dashboard() {
           </h3>
           <p>
             <strong>Danses :</strong>{" "}
-            {(profile.dances || []).map((d) => d.label).join(", ") ||
-              "Non renseigné"}
+            {(profile.dances || [])
+              .map((danceValue) => {
+                const found = danceStyles.find((d) => d.value === danceValue);
+                return found ? found.label : danceValue;
+              })
+              .join(", ") || "Non renseigné"}
           </p>
           <p>
             <strong>Ville :</strong> {profile.location || "Non renseigné"}
