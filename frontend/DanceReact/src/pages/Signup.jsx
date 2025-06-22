@@ -8,18 +8,24 @@ export default function Signup({ onSignup }) {
 
   const onSubmit = async (data) => {
     try {
-      const res = await fetch("http://localhost:3001/api/signup", {
+      const res = await fetch("http://localhost:3001/api/users/signup", {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Erreur inscription");
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const error = await res.json();
+          throw new Error(error.error || "Erreur inscription");
+        } else {
+          const text = await res.text();
+          throw new Error(`Erreur inscription: ${text}`);
+        }
       }
 
-      const loginRes = await fetch("http://localhost:3001/api/login", {
+      const loginRes = await fetch("http://localhost:3001/api/users/login", {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -36,8 +42,8 @@ export default function Signup({ onSignup }) {
 
       localStorage.setItem("token", loginData.token);
 
-      if (onSignup) onSignup(); // ← met à jour isLoggedIn dans App.jsx
-      navigate("/profile-form"); // ← redirection manuelle
+      if (onSignup) onSignup();
+      navigate("/profile-form");
 
     } catch (err) {
       alert(err.message);

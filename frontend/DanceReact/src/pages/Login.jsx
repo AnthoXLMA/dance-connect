@@ -11,7 +11,7 @@ export default function Login({ onLogin }) {
   } = useForm();
 
   const onSubmit = (data) => {
-    fetch("http://localhost:3001/api/login", {
+    fetch("http://localhost:3001/api/users/login", {
       method: "POST",
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -31,7 +31,6 @@ export default function Login({ onLogin }) {
       })
       .catch((err) => alert(err.message));
   };
-
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-md mx-auto p-4">
