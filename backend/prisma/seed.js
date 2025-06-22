@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
@@ -8,20 +9,38 @@ async function main() {
   await prisma.event.deleteMany();
   await prisma.user.deleteMany();
 
-  console.log("👤 Création des utilisateurs...");
-  const users = await Promise.all([
-    prisma.user.create({
-      data: { email: 'alice@example.com', password: 'hashedpassword', firstName: 'Alice' },
-    }),
-    prisma.user.create({
-      data: { email: 'bob@example.com', password: 'hashedpassword', firstName: 'Bob' },
-    }),
-    prisma.user.create({
-      data: { email: 'carol@example.com', password: 'hashedpassword', firstName: 'Carol' },
-    }),
-  ]);
+  console.log("👤 Création de 10 utilisateurs fixes...");
+  const hashedPassword = await bcrypt.hash('test1234', 10);
 
-  console.log("📍 Création d'événements fixes...");
+  const usersData = [
+    { email: "alice@test.com", firstName: "Alice", lat: 48.8566, lng: 2.3522 },
+    { email: "bob@test.com", firstName: "Bob", lat: 45.75, lng: 4.85 },
+    { email: "carol@test.com", firstName: "Carol", lat: 43.6047, lng: 1.4442 },
+    { email: "david@test.com", firstName: "David", lat: 44.8378, lng: -0.5792 },
+    { email: "eva@test.com", firstName: "Eva", lat: 43.2965, lng: 5.3698 },
+    { email: "frank@test.com", firstName: "Frank", lat: 47.2184, lng: -1.5536 },
+    { email: "grace@test.com", firstName: "Grace", lat: 43.7102, lng: 7.2620 },
+    { email: "hugo@test.com", firstName: "Hugo", lat: 50.6292, lng: 3.0573 },
+    { email: "iris@test.com", firstName: "Iris", lat: 48.5734, lng: 7.7521 },
+    { email: "jack@test.com", firstName: "Jack", lat: 45.1885, lng: 5.7245 },
+  ];
+
+  // Création utilisateurs & récupération dans un tableau
+  const users = [];
+  for (const userData of usersData) {
+    const user = await prisma.user.create({
+      data: {
+        email: userData.email,
+        firstName: userData.firstName,
+        password: hashedPassword,
+        lat: userData.lat,
+        lng: userData.lng,
+      },
+    });
+    users.push(user);
+  }
+
+  console.log("📍 Création d'événements fixes avec organisateurs...");
   const sampleEvents = [
     {
       name: "Soirée Salsa à Lyon",
@@ -29,6 +48,7 @@ async function main() {
       lng: 4.85,
       date: new Date("2025-07-10"),
       description: "Ambiance caliente et DJ latino 🎶",
+      organizerId: users[0].id,
     },
     {
       name: "West Coast à Toulouse",
@@ -36,6 +56,7 @@ async function main() {
       lng: 1.44,
       date: new Date("2025-07-14"),
       description: "Niveau débutant à confirmé 🕺",
+      organizerId: users[1].id,
     },
     {
       name: "Bal Tango à Nantes",
@@ -43,6 +64,7 @@ async function main() {
       lng: -1.55,
       date: new Date("2025-07-18"),
       description: "Milonga en plein air 💃",
+      organizerId: users[2].id,
     },
     {
       name: "Kompa sur la plage à Quiberon",
@@ -50,6 +72,7 @@ async function main() {
       lng: -3.1167,
       date: new Date("2025-07-22"),
       description: "Kompa sunset vibes au bord de la mer 🌅",
+      organizerId: users[3].id,
     },
     {
       name: "Kizomba à Vannes",
@@ -57,19 +80,21 @@ async function main() {
       lng: -2.7603,
       date: new Date("2025-07-25"),
       description: "Soirée kizomba avec DJ en direct 🎧",
+      organizerId: users[4].id,
     },
   ];
 
   for (const event of sampleEvents) {
-    await prisma.event.create({
-      data: event,
-    });
+    await prisma.event.create({ data: event });
   }
 
-  console.log("🗺️ Génération de 100 événements aléatoires en France...");
+  console.log("🗺️ Génération de 100 événements aléatoires en France avec organisateurs...");
   for (let i = 1; i <= 100; i++) {
     const randomLat = 42 + Math.random() * 9;  // entre 42 et 51
     const randomLng = -5 + Math.random() * 13; // entre -5 et 8
+
+    // Choix aléatoire d’un organisateur parmi les users
+    const organizer = users[Math.floor(Math.random() * users.length)];
 
     await prisma.event.create({
       data: {
@@ -78,11 +103,12 @@ async function main() {
         lng: parseFloat(randomLng.toFixed(5)),
         date: new Date(Date.now() + i * 86400000), // 1 par jour
         description: `Événement auto-généré n°${i} en France 🇫🇷`,
+        organizerId: organizer.id,
       },
     });
   }
 
-  console.log("🤝 Insertion de swipes...");
+  console.log("🤝 Insertion de swipes entre les 3 premiers utilisateurs...");
   await prisma.swipe.createMany({
     data: [
       { swiperId: users[0].id, swipedId: users[1].id, liked: true },
@@ -92,7 +118,7 @@ async function main() {
     ],
   });
 
-  console.log("✅ Seed terminé : 3 users, 105 événements, 4 swipes.");
+  console.log(`✅ Seed terminé : ${users.length} utilisateurs, 105 événements, 4 swipes.`);
 }
 
 main()

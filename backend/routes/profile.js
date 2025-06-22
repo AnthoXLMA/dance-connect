@@ -31,4 +31,9 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
+router.get('/nearby', (req, res) => {
+  // Exemple : renvoyer une liste vide ou fake data
+  res.json([{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }]);
+});
+
 module.exports = router;

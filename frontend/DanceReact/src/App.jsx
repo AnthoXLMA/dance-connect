@@ -8,6 +8,7 @@ import {
   useLocation,
 } from "react-router-dom";
 
+import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
@@ -144,7 +145,7 @@ export default function App() {
                 <Navigate to="/profile-form" />
               )
             ) : (
-              <Navigate to="/login" />
+              <Home />
             )
           }
         />

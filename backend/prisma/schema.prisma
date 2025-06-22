@@ -8,22 +8,33 @@ datasource db {
 }
 
 model User {
-  id         Int     @id @default(autoincrement())
-  email      String  @unique
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
   password   String
   firstName  String?
+  lastName   String?
+  username   String?  @unique
+  avatarUrl  String?
+  bio        String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  likes      Like[]
+  lat        Float?
+  lng        Float?
 
-  swipesGiven    Swipe[] @relation("UserSwipesGiven")
-  swipesReceived Swipe[] @relation("UserSwipesReceived")
+  likes           Like[]
+  swipesGiven     Swipe[] @relation("UserSwipesGiven")
+  swipesReceived  Swipe[] @relation("UserSwipesReceived")
+  eventsOrganized Event[] @relation("EventOrganizer")
 }
+
 
 model Swipe {
   id        Int  @id @default(autoincrement())
   swiperId  Int
   swipedId  Int
   liked     Boolean
+  createdAt DateTime @default(now())
 
   swiper    User @relation("UserSwipesGiven", fields: [swiperId], references: [id])
   swiped    User @relation("UserSwipesReceived", fields: [swipedId], references: [id])
@@ -31,24 +42,32 @@ model Swipe {
   @@unique([swiperId, swipedId])
 }
 
-
 model Event {
   id          Int      @id @default(autoincrement())
+  name        String   @default("Unnamed Event")
   date        DateTime @default(now())
   description String?
+  address     String?
   lat         Float    @default(0)
   lng         Float    @default(0)
-  name        String   @default("Unnamed Event")
+  category    String?
+  organizerId Int?
+  organizer   User?    @relation("EventOrganizer", fields: [organizerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+
   likes       Like[]
 }
 
 model Like {
-  id      Int   @id @default(autoincrement())
-  userId  Int
-  eventId Int
-  event   Event @relation(fields: [eventId], references: [id])
-  user    User  @relation(fields: [userId], references: [id])
+  id        Int   @id @default(autoincrement())
+  userId    Int
+  eventId   Int
+  createdAt DateTime @default(now())
+
+  event     Event @relation(fields: [eventId], references: [id])
+  user      User  @relation(fields: [userId], references: [id])
 
   @@unique([userId, eventId])
 }
-
