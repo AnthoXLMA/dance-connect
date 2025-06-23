@@ -25,26 +25,39 @@ async function main() {
     { email: "jack@test.com", firstName: "Jack", lat: 45.1885, lng: 5.7245 },
   ];
 
-  // Création utilisateurs & récupération dans un tableau
   const users = [];
+
   for (const userData of usersData) {
     const user = await prisma.user.create({
       data: {
         email: userData.email,
         firstName: userData.firstName,
+        lastName: "Test",
         password: hashedPassword,
+        bio: "Utilisateur généré automatiquement",
+        location: "France",
         lat: userData.lat,
         lng: userData.lng,
+        dances: ["salsa", "kizomba"],
+        levels: {
+          salsa: "beginner",
+          kizomba: "intermediate",
+        },
+        geoLocation: {
+          lat: userData.lat,
+          lng: userData.lng,
+        },
       },
     });
     users.push(user);
   }
 
-  // Ajout d’un utilisateur de test avec toutes les propriétés complexes
+  // Utilisateur de test complet
   const testUser = await prisma.user.create({
     data: {
       email: "testuser@test.com",
       firstName: "Test",
+      lastName: "User",
       password: hashedPassword,
       lat: 48.85,
       lng: 2.35,
@@ -63,64 +76,56 @@ async function main() {
 
   console.log("📍 Création d'événements fixes avec organisateurs...");
   const sampleEvents = [
-  {
-    name: "Soirée Salsa à Lyon",
-    lat: 45.75,
-    lng: 4.85,
-    date: new Date("2025-07-10"),
-    description: "Ambiance caliente et DJ latino 🎶",
-    organizerId: users[0].id,
-    dances: ["salsa"],
-  },
-  {
-    name: "West Coast à Toulouse",
-    lat: 43.6,
-    lng: 1.44,
-    date: new Date("2025-07-14"),
-    description: "Niveau débutant à confirmé 🕺",
-    organizerId: users[1].id,
-    dances: ["westcoastswing"],
-  },
-  {
-    name: "Bal Tango à Nantes",
-    lat: 47.22,
-    lng: -1.55,
-    date: new Date("2025-07-18"),
-    description: "Milonga en plein air 💃",
-    organizerId: users[2].id,
-    dances: ["tango"],
-  },
-  {
-    name: "Kompa sur la plage à Quiberon",
-    lat: 47.4833,
-    lng: -3.1167,
-    date: new Date("2025-07-22"),
-    description: "Kompa sunset vibes au bord de la mer 🌅",
-    organizerId: users[3].id,
-    dances: ["kompa"],
-  },
-  {
-    name: "Kizomba à Vannes",
-    lat: 47.6559,
-    lng: -2.7603,
-    date: new Date("2025-07-25"),
-    description: "Soirée kizomba avec DJ en direct 🎧",
-    organizerId: users[4].id,
-    dances: ["kizomba"],
-  },
-];
-
+    {
+      name: "Soirée Salsa à Lyon",
+      lat: 45.75,
+      lng: 4.85,
+      date: new Date("2025-07-10"),
+      description: "Ambiance caliente et DJ latino 🎶",
+      organizerId: users[0].id,
+    },
+    {
+      name: "West Coast à Toulouse",
+      lat: 43.6,
+      lng: 1.44,
+      date: new Date("2025-07-14"),
+      description: "Niveau débutant à confirmé 🕺",
+      organizerId: users[1].id,
+    },
+    {
+      name: "Bal Tango à Nantes",
+      lat: 47.22,
+      lng: -1.55,
+      date: new Date("2025-07-18"),
+      description: "Milonga en plein air 💃",
+      organizerId: users[2].id,
+    },
+    {
+      name: "Kompa sur la plage à Quiberon",
+      lat: 47.4833,
+      lng: -3.1167,
+      date: new Date("2025-07-22"),
+      description: "Kompa sunset vibes au bord de la mer 🌅",
+      organizerId: users[3].id,
+    },
+    {
+      name: "Kizomba à Vannes",
+      lat: 47.6559,
+      lng: -2.7603,
+      date: new Date("2025-07-25"),
+      description: "Soirée kizomba avec DJ en direct 🎧",
+      organizerId: users[4].id,
+    },
+  ];
 
   for (const event of sampleEvents) {
     await prisma.event.create({ data: event });
   }
 
-  console.log("🗺️ Génération de 100 événements aléatoires en France avec organisateurs...");
+  console.log("🗺️ Génération de 100 événements aléatoires en France...");
   for (let i = 1; i <= 100; i++) {
-    const randomLat = 42 + Math.random() * 9;  // entre 42 et 51
-    const randomLng = -5 + Math.random() * 13; // entre -5 et 8
-
-    // Choix aléatoire d’un organisateur parmi les users
+    const randomLat = 42 + Math.random() * 9;
+    const randomLng = -5 + Math.random() * 13;
     const organizer = users[Math.floor(Math.random() * users.length)];
 
     await prisma.event.create({
@@ -128,7 +133,7 @@ async function main() {
         name: `Événement #${i}`,
         lat: parseFloat(randomLat.toFixed(5)),
         lng: parseFloat(randomLng.toFixed(5)),
-        date: new Date(Date.now() + i * 86400000), // 1 par jour
+        date: new Date(Date.now() + i * 86400000),
         description: `Événement auto-généré n°${i} en France 🇫🇷`,
         organizerId: organizer.id,
       },
