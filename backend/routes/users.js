@@ -22,10 +22,17 @@ router.post("/signup", async (req, res) => {
       data: {
         email,
         password: hashedPassword,
-        firstName: "",  // ajoute ces champs ici pour éviter erreur si dans Prisma ils sont obligatoires
+        // Initialiser les champs optionnels à vide ou null
+        firstName: "",
         lastName: "",
         bio: "",
         location: "",
+        dances: [],
+        levels: {},
+        availability: null,
+        geoLocation: null,
+        lat: null,
+        lng: null,
       },
     });
 
@@ -65,9 +72,18 @@ router.get("/me", authenticateToken, async (req, res) => {
       select: {
         id: true,
         firstName: true,
+        lastName: true,
         email: true,
+        bio: true,
+        location: true,
+        dances: true,
+        levels: true,
+        availability: true,
+        geoLocation: true,
         lat: true,
         lng: true,
+        username: true,
+        avatarUrl: true,
       },
     });
 
@@ -83,9 +99,9 @@ router.get("/me", authenticateToken, async (req, res) => {
 router.put("/me", authenticateToken, async (req, res) => {
   const userId = req.user.id;
 
-  // ⚠️ On extrait uniquement les champs autorisés à être modifiés
   const {
     firstName,
+    lastName,
     lat,
     lng,
     availability,
@@ -94,6 +110,8 @@ router.put("/me", authenticateToken, async (req, res) => {
     levels,
     location,
     geoLocation,
+    username,
+    avatarUrl,
   } = req.body;
 
   try {
@@ -101,6 +119,7 @@ router.put("/me", authenticateToken, async (req, res) => {
       where: { id: userId },
       data: {
         ...(firstName !== undefined && { firstName }),
+        ...(lastName !== undefined && { lastName }),
         ...(lat !== undefined && { lat }),
         ...(lng !== undefined && { lng }),
         ...(availability !== undefined && { availability }),
@@ -109,6 +128,8 @@ router.put("/me", authenticateToken, async (req, res) => {
         ...(levels !== undefined && { levels }),
         ...(location !== undefined && { location }),
         ...(geoLocation !== undefined && { geoLocation }),
+        ...(username !== undefined && { username }),
+        ...(avatarUrl !== undefined && { avatarUrl }),
       },
     });
 
@@ -127,17 +148,14 @@ router.get("/nearby", authenticateToken, async (req, res) => {
     return res.status(400).json({ error: "lat et lng sont requis en query params" });
   }
 
-  // Pour simplifier, on récupère tous les utilisateurs dans un rayon "radius" km.
-  // Attention: ceci est un calcul approximatif, pour des requêtes précises il faut utiliser PostGIS ou autre.
   const latNum = parseFloat(lat);
   const lngNum = parseFloat(lng);
   const radiusNum = parseFloat(radius);
 
   try {
-    // Récupérer tous les utilisateurs (sauf soi-même)
     const users = await prisma.user.findMany({
       where: {
-        id: { not: req.user.id }, // exclure l’utilisateur connecté
+        id: { not: req.user.id },
         lat: { not: null },
         lng: { not: null },
       },
@@ -152,9 +170,8 @@ router.get("/nearby", authenticateToken, async (req, res) => {
       },
     });
 
-    // Fonction simple de distance entre 2 points GPS en km (Haversine)
     function distanceKm(lat1, lng1, lat2, lng2) {
-      const R = 6371; // rayon Terre en km
+      const R = 6371;
       const dLat = ((lat2 - lat1) * Math.PI) / 180;
       const dLng = ((lng2 - lng1) * Math.PI) / 180;
       const a =
@@ -166,7 +183,6 @@ router.get("/nearby", authenticateToken, async (req, res) => {
       return R * c;
     }
 
-    // Filtrer les utilisateurs dans le rayon
     const nearbyUsers = users.filter((u) => {
       return distanceKm(latNum, lngNum, u.lat, u.lng) <= radiusNum;
     });
@@ -177,6 +193,5 @@ router.get("/nearby", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
-
 
 module.exports = router;
