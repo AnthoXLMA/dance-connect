@@ -1,6 +1,6 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require("@prisma/client");
 const { authenticateToken, generateToken } = require("../middlewares/auth");
 
 const prisma = new PrismaClient();
@@ -22,7 +22,6 @@ router.post("/signup", async (req, res) => {
       data: {
         email,
         password: hashedPassword,
-        // Initialiser les champs optionnels à vide ou null
         firstName: "",
         lastName: "",
         bio: "",
@@ -97,8 +96,8 @@ router.get("/me", authenticateToken, async (req, res) => {
 
 // ✏️ Mise à jour du profil utilisateur connecté
 router.put("/me", authenticateToken, async (req, res) => {
+  console.log("✅ [GET] /me hit par :", req.user);
   const userId = req.user.id;
-
   const {
     firstName,
     lastName,
@@ -114,6 +113,20 @@ router.put("/me", authenticateToken, async (req, res) => {
     avatarUrl,
   } = req.body;
 
+  // 🧼 Nettoyage de `dances` : uniquement chaînes non vides
+  const cleanedDances = Array.isArray(dances)
+    ? dances.filter(d => typeof d === 'string' && d.trim() !== '')
+    : undefined;
+
+  // 🧼 Nettoyage de `levels` : uniquement paires valides { clé: valeur non-nulle }
+  const cleanedLevels = levels && typeof levels === 'object'
+    ? Object.fromEntries(
+        Object.entries(levels).filter(
+          ([k, v]) => k && k !== 'undefined' && v != null
+        )
+      )
+    : undefined;
+
   try {
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -124,8 +137,8 @@ router.put("/me", authenticateToken, async (req, res) => {
         ...(lng !== undefined && { lng }),
         ...(availability !== undefined && { availability }),
         ...(bio !== undefined && { bio }),
-        ...(dances !== undefined && { dances }),
-        ...(levels !== undefined && { levels }),
+        ...(cleanedDances !== undefined && { dances: cleanedDances }),
+        ...(cleanedLevels !== undefined && { levels: cleanedLevels }),
         ...(location !== undefined && { location }),
         ...(geoLocation !== undefined && { geoLocation }),
         ...(username !== undefined && { username }),
@@ -140,54 +153,39 @@ router.put("/me", authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/users/nearby?lat=...&lng=...&radius=...
-router.get("/nearby", authenticateToken, async (req, res) => {
-  const { lat, lng, radius = 10 } = req.query;
 
-  if (!lat || !lng) {
-    return res.status(400).json({ error: "lat et lng sont requis en query params" });
-  }
-
-  const latNum = parseFloat(lat);
-  const lngNum = parseFloat(lng);
-  const radiusNum = parseFloat(radius);
+// 📍 Affichage de tous les utilisateurs avec coordonnées valides
+router.get("/nearby", async (req, res) => {
+    console.log("✅ [GET] /nearby triggered");
 
   try {
     const users = await prisma.user.findMany({
       where: {
-        id: { not: req.user.id },
         lat: { not: null },
         lng: { not: null },
       },
-      select: {
-        id: true,
-        firstName: true,
-        lat: true,
-        lng: true,
-        bio: true,
-        dances: true,
-        levels: true,
-      },
     });
 
-    function distanceKm(lat1, lng1, lat2, lng2) {
-      const R = 6371;
-      const dLat = ((lat2 - lat1) * Math.PI) / 180;
-      const dLng = ((lng2 - lng1) * Math.PI) / 180;
-      const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos((lat1 * Math.PI) / 180) *
-          Math.cos((lat2 * Math.PI) / 180) *
-          Math.sin(dLng / 2) ** 2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    }
+    const filteredUsers = users.filter((u) => u.lat !== null && u.lng !== null);
 
-    const nearbyUsers = users.filter((u) => {
-      return distanceKm(latNum, lngNum, u.lat, u.lng) <= radiusNum;
-    });
+    console.log("Tous les utilisateurs avec coordonnées valides :", filteredUsers.length);
 
-    res.json(nearbyUsers);
+    res.json(
+      filteredUsers.map((u) => ({
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        lat: u.lat,
+        lng: u.lng,
+        dances: u.dances,
+        avatarUrl: u.avatarUrl,
+        availability: u.availability,
+        bio: u.bio,
+        levels: u.levels,
+        location: u.location,
+        username: u.username,
+      }))
+    );
   } catch (error) {
     console.error("Erreur dans /api/users/nearby :", error);
     res.status(500).json({ error: "Erreur serveur" });

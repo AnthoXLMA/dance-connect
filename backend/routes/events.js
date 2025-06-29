@@ -22,6 +22,28 @@ router.get("/", async (req, res) => {
   }
 });
 
+// routes/events.js
+router.post("/", authenticateToken, async (req, res) => {
+  const { name, dances, lat, lng } = req.body;
+  if (!name || !lat || !lng) return res.status(400).json({ error: "Données manquantes" });
+
+  try {
+    const event = await prisma.event.create({
+      data: {
+        name,
+        dances,
+        lat,
+        lng,
+        creatorEmail: req.user.email, // optionnel
+      },
+    });
+    res.status(201).json(event);
+  } catch (err) {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+
 // ✅ POST : Liker un événement (route : /api/events/:id/like)
 router.post("/:id/like", authenticateToken, async (req, res) => {
   const eventId = parseInt(req.params.id);
