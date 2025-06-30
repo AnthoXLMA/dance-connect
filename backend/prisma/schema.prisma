@@ -36,6 +36,21 @@ model User {
   eventsOrganized Event[] @relation("EventOrganizer")
 }
 
+model Event {
+  id            Int      @id @default(autoincrement())
+  name          String
+  dances        String[]
+  lat           Float
+  lng           Float
+  date          DateTime
+  createdAt     DateTime @default(now())
+
+  organizerId   Int?
+  organizer     User?    @relation("EventOrganizer", fields: [organizerId], references: [id])
+
+  likes         Like[]   // <--- ajoute cette ligne
+}
+
 
 model Swipe {
   id        Int  @id @default(autoincrement())
@@ -50,23 +65,7 @@ model Swipe {
   @@unique([swiperId, swipedId])
 }
 
-model Event {
-  id          Int      @id @default(autoincrement())
-  name        String   @default("Unnamed Event")
-  date        DateTime @default(now())
-  description String?
-  address     String?
-  lat         Float    @default(0)
-  lng         Float    @default(0)
-  category    String?
-  organizerId Int?
-  organizer   User?    @relation("EventOrganizer", fields: [organizerId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-
-  likes       Like[]
-}
 
 model Like {
   id        Int   @id @default(autoincrement())
