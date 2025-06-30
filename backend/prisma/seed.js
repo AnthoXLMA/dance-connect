@@ -13,21 +13,35 @@ async function main() {
   const hashedPassword = await bcrypt.hash('test1234', 10);
 
   const usersData = [
-    { email: "alice@test.com", firstName: "Alice", lastName: "L", lat: 48.8566, lng: 2.3522 },   // Paris
-    { email: "bob@test.com", firstName: "Bob", lastName: "M", lat: 45.7640, lng: 4.8357 },       // Lyon
-    { email: "carol@test.com", firstName: "Carol", lastName: "N", lat: 43.2965, lng: 5.3698 },   // Marseille
-    { email: "david@test.com", firstName: "David", lastName: "O", lat: 43.6047, lng: 1.4442 },   // Toulouse
-    { email: "eva@test.com", firstName: "Eva", lastName: "P", lat: 43.7102, lng: 7.2620 },       // Nice
-    { email: "frank@test.com", firstName: "Frank", lastName: "Q", lat: 47.2184, lng: -1.5536 },  // Nantes
-    { email: "grace@test.com", firstName: "Grace", lastName: "R", lat: 50.6292, lng: 3.0573 },   // Lille
-    { email: "hugo@test.com", firstName: "Hugo", lastName: "S", lat: 48.5734, lng: 7.7521 },     // Strasbourg
-    { email: "iris@test.com", firstName: "Iris", lastName: "T", lat: 45.1885, lng: 5.7245 },     // Grenoble
-    { email: "jack@test.com", firstName: "Jack", lastName: "U", lat: 44.8378, lng: -0.5792 },    // Bordeaux
+    { email: "alice@test.com", firstName: "Alice", lastName: "L", lat: 48.8566, lng: 2.3522 },
+    { email: "bob@test.com", firstName: "Bob", lastName: "M", lat: 45.7640, lng: 4.8357 },
+    { email: "carol@test.com", firstName: "Carol", lastName: "N", lat: 43.2965, lng: 5.3698 },
+    { email: "david@test.com", firstName: "David", lastName: "O", lat: 43.6047, lng: 1.4442 },
+    { email: "eva@test.com", firstName: "Eva", lastName: "P", lat: 43.7102, lng: 7.2620 },
+    { email: "frank@test.com", firstName: "Frank", lastName: "Q", lat: 47.2184, lng: -1.5536 },
+    { email: "grace@test.com", firstName: "Grace", lastName: "R", lat: 50.6292, lng: 3.0573 },
+    { email: "hugo@test.com", firstName: "Hugo", lastName: "S", lat: 48.5734, lng: 7.7521 },
+    { email: "iris@test.com", firstName: "Iris", lastName: "T", lat: 45.1885, lng: 5.7245 },
+    { email: "jack@test.com", firstName: "Jack", lastName: "U", lat: 44.8378, lng: -0.5792 },
   ];
 
+  const danceStyles = ["salsa", "bachata", "kizomba", "rock", "swing"];
+  const levelOptions = ["beginner", "intermediate", "advanced"];
   const createdUsers = [];
 
+  function getRandomSubset(array) {
+    const shuffled = [...array].sort(() => 0.5 - Math.random());
+    const count = Math.floor(Math.random() * array.length) + 1; // 1 à array.length
+    return shuffled.slice(0, count);
+  }
+
   for (const u of usersData) {
+    const dances = getRandomSubset(danceStyles);
+    const levels = {};
+    dances.forEach((dance) => {
+      levels[dance] = levelOptions[Math.floor(Math.random() * levelOptions.length)];
+    });
+
     const createdUser = await prisma.user.create({
       data: {
         email: u.email,
@@ -38,8 +52,8 @@ async function main() {
         location: "France",
         lat: u.lat,
         lng: u.lng,
-        dances: ["salsa", "bachata"],
-        levels: { salsa: "beginner", bachata: "intermediate" },
+        dances,
+        levels,
         availability: "Week-ends",
         geoLocation: { lat: u.lat, lng: u.lng },
       },
@@ -61,8 +75,6 @@ async function main() {
     { name: "Grenoble", lat: 45.1885, lng: 5.7245 },
     { name: "Bordeaux", lat: 44.8378, lng: -0.5792 },
   ];
-
-  const danceStyles = ["salsa", "bachata", "kizomba", "rock", "swing"];
 
   for (let i = 0; i < 20; i++) {
     const city = cities[i % cities.length];

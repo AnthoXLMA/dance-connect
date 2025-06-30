@@ -31,7 +31,6 @@ app.use("/api/users", userRoutes);
 const profileRoutes = require("./routes/profile");
 app.use("/api/profile", profileRoutes);
 
-
 // 💬 Messagerie (en mémoire)
 const messages = [];
 

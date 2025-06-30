@@ -40,6 +40,34 @@ export default function MyEventsLiked() {
     fetchLikedEvents();
   }, [token]);
 
+  // Fonction pour participer à un événement ("J'y vais")
+  const handleAttend = async (eventId) => {
+    if (!token) {
+      alert("Vous devez être connecté pour participer à un événement.");
+      return;
+    }
+    try {
+      const res = await fetch(`http://localhost:3001/api/events/${eventId}/attend`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Erreur lors de la participation.");
+      }
+
+      // Retirer l'événement de la liste locale des likés après participation
+      setLikedEvents((prev) => prev.filter((event) => event.id !== eventId));
+    } catch (error) {
+      console.error("Erreur participation :", error);
+      alert("Erreur lors de la participation à l'événement.");
+    }
+  };
+
   if (loading) return <div className="text-center mt-10">Chargement...</div>;
   if (error) return <div className="text-center text-red-600 mt-10">Erreur : {error}</div>;
   if (likedEvents.length === 0)
@@ -50,7 +78,7 @@ export default function MyEventsLiked() {
       <h2 className="text-3xl font-extrabold mb-6 text-center">❤️ Mes événements likés</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {likedEvents.map((event) => (
-          <EventCard key={event.id} event={event} />
+          <EventCard key={event.id} event={event} onAttend={handleAttend} />
         ))}
       </div>
     </div>

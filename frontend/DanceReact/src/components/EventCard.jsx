@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function EventCard({ event }) {
+export default function EventCard({ event, onAttend }) {
   return (
     <div className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-300 border border-gray-200 overflow-hidden">
       {/* Image (fallback si aucune image disponible) */}
@@ -34,6 +34,16 @@ export default function EventCard({ event }) {
         {/* Lieu (si disponible) */}
         {event.city && (
           <p className="text-sm text-gray-400 italic">📍 {event.city}</p>
+        )}
+
+        {/* Bouton "J’y vais" affiché uniquement si la fonction onAttend est fournie */}
+        {onAttend && (
+          <button
+            onClick={() => onAttend(event.id)}
+            className="mt-4 bg-green-500 hover:bg-green-600 text-white font-semibold px-4 py-2 rounded-full shadow-md transition"
+          >
+            ✅ J’y vais
+          </button>
         )}
       </div>
     </div>
