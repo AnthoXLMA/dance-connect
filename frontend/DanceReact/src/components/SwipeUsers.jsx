@@ -1,7 +1,17 @@
 const [swipedUserIds, setSwipedUserIds] = useState([]);
 
 useEffect(() => {
-  axios.get("/api/swipes/ids") // GET API avec les swipedId
+  const token = localStorage.getItem("token");
+  if (!token) {
+    console.error("Token manquant !");
+    return;
+  }
+
+    axios.get("/api/swipes/liked", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
     .then(res => setSwipedUserIds(res.data))
     .catch(console.error);
 }, []);
@@ -13,3 +23,5 @@ const usersToSwipe = allUsers.filter(u => !swipedUserIds.includes(u.id));
 ) : (
   <button onClick={() => handleLike(user.id)}>Like</button>
 )}
+
+

@@ -68,6 +68,10 @@ app.get("/api/messages/received", authenticateToken, (req, res) => {
 const eventRoutes = require('./routes/events');
 app.use('/api/events', eventRoutes);
 
+const swipeRoutes = require("./routes/swipes");
+app.use("/api/swipes", swipeRoutes);
+
+
 app.use(errorHandler);
 
 // 🚀 Démarrage

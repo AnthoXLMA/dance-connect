@@ -159,8 +159,8 @@ const Dashboard = () => {
       </div>
 
       <MapContainer
-        center={position}
-        zoom={13}
+        center={[46.603354, 1.888334]} // Centre géographique de la France
+        zoom={6}                       // Zoom plus large pour voir toute la France
         style={{ height: "80vh", width: "100%" }}
       >
         <TileLayer

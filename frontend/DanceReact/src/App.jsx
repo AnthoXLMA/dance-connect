@@ -23,6 +23,8 @@ import MyEventsLiked from "./pages/MyEventsLiked";
 import LikedUsers from "./pages/LikedUsers";
 import TopNavbar from "./components/TopNavbar";
 import ProfileEdit from "./pages/ProfileEdit";
+import Subscriptions from "./pages/Subscriptions"; // chemin à adapter
+
 
 // 🔐 Route protégée
 function ProtectedRoute({ isLoggedIn, children }) {
@@ -243,6 +245,8 @@ export default function App() {
           path="/signup"
           element={<Signup onSignup={() => setIsLoggedIn(true)} />}
         />
+
+        <Route path="/subscriptions" element={<Subscriptions />} />
 
         <Route
           path="/profile-form"

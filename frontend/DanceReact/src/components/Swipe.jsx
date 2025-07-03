@@ -7,41 +7,92 @@ export default function Swipe() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Récupération users non swipés au montage
   useEffect(() => {
-    async function fetchUsers() {
+    async function fetchData() {
       setLoading(true);
       setError(null);
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Token manquant");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const res = await fetch("http://localhost:3001/api/users/nearby"); // adapte l’URL backend
-        if (!res.ok) throw new Error("Erreur lors du chargement des utilisateurs");
-        const data = await res.json();
-        setUsers(data);
+        // Récupérer les IDs des users déjà swipés (likés ou ignorés)
+        const resSwiped = await fetch("http://localhost:3001/api/swipes/ids", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resSwiped.ok) throw new Error("Erreur récupération swipes");
+        const swipedIds = await resSwiped.json();
+
+        // Récupérer les utilisateurs nearby
+        const resUsers = await fetch("http://localhost:3001/api/users/nearby", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resUsers.ok) throw new Error("Erreur récupération utilisateurs");
+        const usersData = await resUsers.json();
+
+        // Filtrer ceux déjà swipés
+        const filteredUsers = usersData.filter((u) => !swipedIds.includes(u.id));
+        setUsers(filteredUsers);
       } catch (err) {
         setError(err.message || "Erreur inconnue");
       } finally {
         setLoading(false);
       }
     }
-    fetchUsers();
+
+    fetchData();
   }, []);
 
-  const handleSwipe = (direction) => {
+  // Fonction centralisée pour gérer le swipe (like ou ignore)
+  const handleSwipe = async (liked) => {
     if (index >= users.length) return;
     const user = users[index];
-    setMessage(
-      direction === "right"
-        ? `Tu es intéressé par ${user.name} !`
-        : `Pas intéressé par ${user.name}.`
-    );
-    if (index < users.length - 1) {
-      setIndex((prev) => prev + 1);
-    } else {
-      setIndex(users.length); // fin des profils
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Token manquant");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:3001/api/swipes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          swipedId: user.id,
+          liked,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Erreur lors du swipe");
+
+      // Message selon action
+      setMessage(
+        liked
+          ? `Tu es intéressé par ${user.username || user.firstName}!`
+          : `Pas intéressé par ${user.username || user.firstName}.`
+      );
+
+      // Supprime le user swipé de la liste pour ne plus le voir
+      setUsers((prevUsers) => prevUsers.filter((u) => u.id !== user.id));
+
+      // Reset index à 0 car on enlève un élément
+      setIndex(0);
+    } catch (err) {
+      setError(err.message || "Erreur lors du swipe");
+      console.error(err);
     }
   };
 
-  if (loading)
-    return <div className="text-center mt-20">Chargement des profils...</div>;
+  if (loading) return <div className="text-center mt-20">Chargement des profils...</div>;
 
   if (error)
     return (
@@ -50,7 +101,7 @@ export default function Swipe() {
       </div>
     );
 
-  if (index >= users.length)
+  if (users.length === 0)
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
         <p className="text-lg font-semibold">Tu as vu tous les profils.</p>
@@ -59,7 +110,6 @@ export default function Swipe() {
     );
 
   const user = users[index];
-  console.log("User courant :", user);
 
   return (
     <div className="flex flex-col items-center justify-center h-full p-4">
@@ -71,13 +121,13 @@ export default function Swipe() {
         <p className="mb-4">{user.bio || "Pas de bio"}</p>
         <div className="flex justify-around">
           <button
-            onClick={() => handleSwipe("left")}
+            onClick={() => handleSwipe(false)}
             className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
           >
             Pas intéressé
           </button>
           <button
-            onClick={() => handleSwipe("right")}
+            onClick={() => handleSwipe(true)}
             className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600"
           >
             Intéressé
