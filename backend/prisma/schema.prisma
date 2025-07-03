@@ -11,18 +11,17 @@ model User {
   id           Int      @id @default(autoincrement())
   email        String   @unique
   password     String
-  firstName   String?
-  lastName    String?
-  bio         String?
-  location    String?
-
+  firstName    String?
+  lastName     String?
+  bio          String?
+  location     String?
 
   geoLocation  Json?
   dances       String[]
   levels       Json?
-  availability String?       // ← AJOUTE SEULEMENT CELUI-CI
-  username   String?  @unique
-  avatarUrl  String?
+  availability String?       // Peut contenir une chaîne simple ou un JSON selon usage
+  username     String?  @unique
+  avatarUrl    String?
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -30,7 +29,7 @@ model User {
   lat        Float?
   lng        Float?
 
-  likes           Like[]
+  likes           Like[]  @relation("UserLikes")
   swipesGiven     Swipe[] @relation("UserSwipesGiven")
   swipesReceived  Swipe[] @relation("UserSwipesReceived")
   eventsOrganized Event[] @relation("EventOrganizer")
@@ -48,12 +47,11 @@ model Event {
   organizerId   Int?
   organizer     User?    @relation("EventOrganizer", fields: [organizerId], references: [id])
 
-  likes         Like[]   // <--- ajoute cette ligne
+  likes         Like[]   @relation("EventLikes")  // Relation explicite et nommée
 }
 
-
 model Swipe {
-  id        Int  @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   swiperId  Int
   swipedId  Int
   liked     Boolean
@@ -65,16 +63,14 @@ model Swipe {
   @@unique([swiperId, swipedId])
 }
 
-
-
 model Like {
-  id        Int   @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   userId    Int
   eventId   Int
   createdAt DateTime @default(now())
 
-  event     Event @relation(fields: [eventId], references: [id])
-  user      User  @relation(fields: [userId], references: [id])
+  event     Event @relation("EventLikes", fields: [eventId], references: [id])
+  user      User  @relation("UserLikes", fields: [userId], references: [id])
 
   @@unique([userId, eventId])
 }

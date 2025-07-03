@@ -1,7 +1,8 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
-const { authenticateToken, generateToken } = require("../middlewares/auth");
+const { authenticateToken, authenticateTokenOptional, generateToken } = require("../middlewares/auth");
+
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -154,42 +155,137 @@ router.put("/me", authenticateToken, async (req, res) => {
 });
 
 
-// 📍 Affichage de tous les utilisateurs avec coordonnées valides
-router.get("/nearby", async (req, res) => {
-    console.log("✅ [GET] /nearby triggered");
+// // 📍 Affichage de tous les utilisateurs avec coordonnées valides
+// router.get("/nearby", async (req, res) => {
+//     console.log("✅ [GET] /nearby triggered");
 
+//   try {
+//     const users = await prisma.user.findMany({
+//       where: {
+//         lat: { not: null },
+//         lng: { not: null },
+//       },
+//     });
+
+//     const filteredUsers = users.filter((u) => u.lat !== null && u.lng !== null);
+
+//     console.log("Tous les utilisateurs avec coordonnées valides :", filteredUsers.length);
+
+//     res.json(
+//       filteredUsers.map((u) => ({
+//         id: u.id,
+//         firstName: u.firstName,
+//         lastName: u.lastName,
+//         lat: u.lat,
+//         lng: u.lng,
+//         dances: u.dances,
+//         avatarUrl: u.avatarUrl,
+//         availability: u.availability,
+//         bio: u.bio,
+//         levels: u.levels,
+//         location: u.location,
+//         username: u.username,
+//       }))
+//     );
+//   } catch (error) {
+//     console.error("Erreur dans /api/users/nearby :", error);
+//     res.status(500).json({ error: "Erreur serveur" });
+//   }
+// });
+
+// router.get("/nearby", authenticateToken, async (req, res) => {
+//   const userId = req.user.id;
+
+//   try {
+//     // Récupère les IDs des utilisateurs déjà swipés
+//     const swipes = await prisma.swipe.findMany({
+//       where: { swiperId: userId },
+//       select: { swipedId: true },
+//     });
+//     const swipedIds = swipes.map(s => s.swipedId);
+
+//     // Trouve les utilisateurs géolocalisés non encore swipés
+//     const users = await prisma.user.findMany({
+//       where: {
+//         id: {
+//           not: userId,
+//           notIn: swipedIds,
+//         },
+//         lat: { not: null },
+//         lng: { not: null },
+//       },
+//     });
+
+//     res.json(users.map(u => ({
+//       id: u.id,
+//       firstName: u.firstName,
+//       lastName: u.lastName,
+//       lat: u.lat,
+//       lng: u.lng,
+//       dances: u.dances,
+//       avatarUrl: u.avatarUrl,
+//       availability: u.availability,
+//       bio: u.bio,
+//       levels: u.levels,
+//       location: u.location,
+//       username: u.username,
+//     })));
+//   } catch (error) {
+//     console.error("Erreur dans /api/users/nearby :", error);
+//     res.status(500).json({ error: "Erreur serveur" });
+//   }
+// });
+
+//DEUX ROUTES NEARBY CI DESSUS FUSIONNEES
+router.get("/nearby", authenticateTokenOptional, async (req, res) => {
   try {
+    let userId = null;
+    if (req.user) {
+      userId = req.user.id;
+    }
+
+    let swipedIds = [];
+
+    if (userId) {
+      // Récupère les IDs des utilisateurs déjà swipés (si connecté)
+      const swipes = await prisma.swipe.findMany({
+        where: { swiperId: userId },
+        select: { swipedId: true },
+      });
+      swipedIds = swipes.map((s) => s.swipedId);
+    }
+
+    // Recherche des utilisateurs avec coordonnées valides
+    // Si connecté, exclure soi-même + les swipés
     const users = await prisma.user.findMany({
       where: {
         lat: { not: null },
         lng: { not: null },
+        ...(userId ? { id: { not: userId, notIn: swipedIds } } : {}),
       },
     });
 
-    const filteredUsers = users.filter((u) => u.lat !== null && u.lng !== null);
+    const result = users.map((u) => ({
+      id: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      lat: u.lat,
+      lng: u.lng,
+      dances: u.dances,
+      avatarUrl: u.avatarUrl,
+      availability: u.availability,
+      bio: u.bio,
+      levels: u.levels,
+      location: u.location,
+      username: u.username,
+    }));
 
-    console.log("Tous les utilisateurs avec coordonnées valides :", filteredUsers.length);
-
-    res.json(
-      filteredUsers.map((u) => ({
-        id: u.id,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        lat: u.lat,
-        lng: u.lng,
-        dances: u.dances,
-        avatarUrl: u.avatarUrl,
-        availability: u.availability,
-        bio: u.bio,
-        levels: u.levels,
-        location: u.location,
-        username: u.username,
-      }))
-    );
+    res.json(result);
   } catch (error) {
     console.error("Erreur dans /api/users/nearby :", error);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
+
 
 module.exports = router;

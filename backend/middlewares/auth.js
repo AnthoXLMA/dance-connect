@@ -6,7 +6,7 @@ function authenticateToken(req, res, next) {
   const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({ error: "Token d'authentification manquant." });
+    return res.status(401).json({ error: "Token d'authentification manquant xxxx" });
   }
 
   jwt.verify(token, jwtSecret, (err, user) => {
@@ -16,8 +16,25 @@ function authenticateToken(req, res, next) {
   });
 }
 
+const authenticateTokenOptional = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  if (authHeader) {
+    const token = authHeader.split(" ")[1];
+    if (!token) return next();
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+      if (!err) req.user = user;
+      next();
+    });
+  } else {
+    next();
+  }
+};
+
+
 function generateToken(payload) {
   return jwt.sign(payload, jwtSecret, { expiresIn: "1h" });
 }
 
-module.exports = { authenticateToken, generateToken };
+module.exports = { authenticateToken, authenticateTokenOptional, generateToken };
+
