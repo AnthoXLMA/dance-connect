@@ -1,58 +1,29 @@
 import React from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
 
-export default function Signup({ onSignup }) {
+  export default function Signup() {
   const { register, handleSubmit, formState: { errors } } = useForm();
-  const navigate = useNavigate();
 
-  const onSubmit = async (data) => {
-    try {
-      const res = await fetch("http://localhost:3001/api/users/signup", {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-
-      if (!res.ok) {
-        const contentType = res.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
+  const onSubmit = (data) => {
+    fetch("http://localhost:3001/api/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+      .then(async res => {
+        if (!res.ok) {
           const error = await res.json();
           throw new Error(error.error || "Erreur inscription");
-        } else {
-          const text = await res.text();
-          throw new Error(`Erreur inscription: ${text}`);
         }
-      }
-
-      const loginRes = await fetch("http://localhost:3001/api/users/login", {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-        }),
-      });
-
-      const loginData = await loginRes.json();
-
-      if (!loginRes.ok) {
-        throw new Error(loginData.error || "Erreur de connexion après inscription");
-      }
-
-      localStorage.setItem("token", loginData.token);
-
-      if (onSignup) onSignup();
-      navigate("/profile-form");
-
-    } catch (err) {
-      alert(err.message);
-    }
+        alert("Inscription réussie !");
+      })
+      .catch(err => alert(err.message));
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-md mx-auto p-4">
       <h2 className="text-xl font-bold mb-4">Créer un compte</h2>
+
       <div className="mb-4">
         <label>Email</label>
         <input
@@ -79,3 +50,7 @@ export default function Signup({ onSignup }) {
     </form>
   );
 }
+
+
+
+

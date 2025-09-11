@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 export default function Swipe() {
-  const [users, setUsers] = useState([]);
-  const [index, setIndex] = useState(0);
+  const [allUsers, setAllUsers] = useState([]); // tous les utilisateurs récupérés
+  const [swipedUserIds, setSwipedUserIds] = useState([]); // ids déjà swipés
+  const [index, setIndex] = useState(0); // index du profil actuel
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Récupération users non swipés au montage
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
       setError(null);
-
       const token = localStorage.getItem("token");
       if (!token) {
         setError("Token manquant");
@@ -21,25 +21,19 @@ export default function Swipe() {
       }
 
       try {
-        // Récupérer les IDs des users déjà swipés (likés ou ignorés)
-        const resSwiped = await fetch("http://localhost:3001/api/swipes/ids", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!resSwiped.ok) throw new Error("Erreur récupération swipes");
-        const swipedIds = await resSwiped.json();
+        const [resSwiped, resUsers] = await Promise.all([
+          axios.get("/api/swipes/liked", { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get("/api/users/nearby", { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
 
-        // Récupérer les utilisateurs nearby
-        const resUsers = await fetch("http://localhost:3001/api/users/nearby", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!resUsers.ok) throw new Error("Erreur récupération utilisateurs");
-        const usersData = await resUsers.json();
+        const swipedIds = resSwiped.data;
+        const usersData = resUsers.data;
 
-        // Filtrer ceux déjà swipés
-        const filteredUsers = usersData.filter((u) => !swipedIds.includes(u.id));
-        setUsers(filteredUsers);
+        setSwipedUserIds(swipedIds);
+        // On filtre les users non swipés pour swiper un par un
+        setAllUsers(usersData.filter(u => !swipedIds.includes(u.id)));
       } catch (err) {
-        setError(err.message || "Erreur inconnue");
+        setError(err.response?.data?.error || err.message || "Erreur inconnue");
       } finally {
         setLoading(false);
       }
@@ -48,11 +42,9 @@ export default function Swipe() {
     fetchData();
   }, []);
 
-  // Fonction centralisée pour gérer le swipe (like ou ignore)
   const handleSwipe = async (liked) => {
-    if (index >= users.length) return;
-    const user = users[index];
-
+    if (index >= allUsers.length) return;
+    const user = allUsers[index];
     const token = localStorage.getItem("token");
     if (!token) {
       setError("Token manquant");
@@ -60,48 +52,31 @@ export default function Swipe() {
     }
 
     try {
-      const res = await fetch("http://localhost:3001/api/swipes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          swipedId: user.id,
-          liked,
-        }),
-      });
+      await axios.post(
+        "/api/swipes",
+        { swipedId: user.id, liked },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-      if (!res.ok) throw new Error("Erreur lors du swipe");
-
-      // Message selon action
       setMessage(
         liked
           ? `Tu es intéressé par ${user.username || user.firstName}!`
           : `Pas intéressé par ${user.username || user.firstName}.`
       );
 
-      // Supprime le user swipé de la liste pour ne plus le voir
-      setUsers((prevUsers) => prevUsers.filter((u) => u.id !== user.id));
+      // Ajouter cet ID à la liste des swipés
+      setSwipedUserIds(prev => [...prev, user.id]);
 
-      // Reset index à 0 car on enlève un élément
-      setIndex(0);
+      // Passer au profil suivant
+      setIndex(prev => prev + 1);
     } catch (err) {
-      setError(err.message || "Erreur lors du swipe");
-      console.error(err);
+      setError(err.response?.data?.error || err.message || "Erreur lors du swipe");
     }
   };
 
   if (loading) return <div className="text-center mt-20">Chargement des profils...</div>;
-
-  if (error)
-    return (
-      <div className="text-center mt-20 text-red-600">
-        Erreur : {error}
-      </div>
-    );
-
-  if (users.length === 0)
+  if (error) return <div className="text-center mt-20 text-red-600">Erreur : {error}</div>;
+  if (index >= allUsers.length)
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
         <p className="text-lg font-semibold">Tu as vu tous les profils.</p>
@@ -109,7 +84,7 @@ export default function Swipe() {
       </div>
     );
 
-  const user = users[index];
+  const user = allUsers[index];
 
   return (
     <div className="flex flex-col items-center justify-center h-full p-4">
