@@ -1,76 +1,15 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  password     String
-  firstName    String?
-  lastName     String?
-  bio          String?
-  location     String?
-
-  geoLocation  Json?
-  dances       String[]
-  levels       Json?
-  availability String?       // Peut contenir une chaîne simple ou un JSON selon usage
-  username     String?  @unique
-  avatarUrl    String?
-
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  lat        Float?
-  lng        Float?
-
-  likes           Like[]  @relation("UserLikes")
-  swipesGiven     Swipe[] @relation("UserSwipesGiven")
-  swipesReceived  Swipe[] @relation("UserSwipesReceived")
-  eventsOrganized Event[] @relation("EventOrganizer")
-}
-
-model Event {
-  id            Int      @id @default(autoincrement())
-  name          String
-  dances        String[]
-  lat           Float
-  lng           Float
-  date          DateTime
-  createdAt     DateTime @default(now())
-
-  organizerId   Int?
-  organizer     User?    @relation("EventOrganizer", fields: [organizerId], references: [id])
-
-  likes         Like[]   @relation("EventLikes")  // Relation explicite et nommée
-}
-
-model Swipe {
-  id        Int      @id @default(autoincrement())
-  swiperId  Int
-  swipedId  Int
-  liked     Boolean
-  createdAt DateTime @default(now())
-
-  swiper    User @relation("UserSwipesGiven", fields: [swiperId], references: [id])
-  swiped    User @relation("UserSwipesReceived", fields: [swipedId], references: [id])
-
-  @@unique([swiperId, swipedId])
-}
-
-model Like {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  eventId   Int
-  createdAt DateTime @default(now())
-
-  event     Event @relation("EventLikes", fields: [eventId], references: [id])
-  user      User  @relation("UserLikes", fields: [userId], references: [id])
-
-  @@unique([userId, eventId])
 }

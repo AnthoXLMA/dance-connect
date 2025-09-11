@@ -1,80 +1,75 @@
-require('dotenv').config();
-
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const path = require("path");
-const { authenticateToken, generateToken } = require("./middlewares/auth");
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
 
 const app = express();
-const PORT = 3001;
-const jwtSecret = process.env.JWT_SECRET;
-
-const errorHandler = require('./middlewares/errorHandler');
-
-// Middlewares globaux
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors());
 app.use(bodyParser.json());
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  next();
+
+const PORT = 3001;
+const JWT_SECRET = "ta_cle_secrete_très_longue_et_complexe";
+
+// Stockage temporaire en mémoire (à remplacer par une base de données)
+const users = [];
+
+// Route inscription
+app.post("/api/signup", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email et mot de passe requis." });
+  }
+
+  const existingUser = users.find(u => u.email === email);
+  if (existingUser) {
+    return res.status(400).json({ error: "Email déjà utilisé." });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  users.push({ email, password: hashedPassword });
+  res.json({ message: "Inscription réussie !" });
 });
 
-const userRoutes = require("./routes/users");
-app.use("/api/users", userRoutes);
+// Route connexion
+app.post("/api/login", async (req, res) => {
+  const { email, password } = req.body;
 
-// Routes de profil
-const profileRoutes = require("./routes/profile");
-app.use("/api/profile", profileRoutes);
+  const user = users.find(u => u.email === email);
+  if (!user) {
+    return res.status(401).json({ error: "Email ou mot de passe incorrect." });
+  }
 
-// 💬 Messagerie (en mémoire)
-const messages = [];
+  const passwordMatch = await bcrypt.compare(password, user.password);
+  if (!passwordMatch) {
+    return res.status(401).json({ error: "Email ou mot de passe incorrect." });
+  }
 
-app.post("/api/messages", authenticateToken, (req, res) => {
-  const from = req.user.email;
-  const { to, content } = req.body;
-
-  if (!to || !content) return res.status(400).json({ error: "Champs 'to' et 'content' requis." });
-
-  const message = {
-    id: messages.length + 1,
-    from,
-    to,
-    content,
-    timestamp: new Date().toISOString(),
-  };
-
-  messages.push(message);
-  res.status(201).json({ message: "Message envoyé avec succès", data: message });
+  const token = jwt.sign({ email: user.email }, JWT_SECRET, { expiresIn: "1h" });
+  res.json({ token });
 });
 
-app.get("/api/messages", authenticateToken, (req, res) => {
-  const email = req.user.email;
-  const userMessages = messages.filter((msg) => msg.from === email || msg.to === email);
-  res.json(userMessages);
+// Middleware pour protéger les routes
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) return res.sendStatus(401);
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+}
+
+// Exemple de route protégée
+app.get("/api/profile", authenticateToken, (req, res) => {
+  res.json({ email: req.user.email, message: "Voici votre profil sécurisé." });
 });
 
-app.get("/api/messages/received", authenticateToken, (req, res) => {
-  const email = req.user.email;
-  const receivedMessages = messages.filter((msg) => msg.to === email);
-  res.json(receivedMessages);
-});
-
-// 📅 Event routes
-const eventRoutes = require('./routes/events');
-app.use('/api/events', eventRoutes);
-
-const swipeRoutes = require("./routes/swipes");
-app.use("/api/swipes", swipeRoutes);
-
-
-app.use(errorHandler);
-
-// 🚀 Démarrage
 app.listen(PORT, () => {
-  console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
+  console.log(`Serveur démarré sur http://localhost:${PORT}`);
 });

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import EventCard from "../components/EventCard";
 
 export default function MyEventsLiked() {
   const [likedEvents, setLikedEvents] = useState([]);
@@ -40,7 +39,6 @@ export default function MyEventsLiked() {
     fetchLikedEvents();
   }, [token]);
 
-  // Fonction pour participer à un événement ("J'y vais")
   const handleAttend = async (eventId) => {
     if (!token) {
       alert("Vous devez être connecté pour participer à un événement.");
@@ -60,7 +58,6 @@ export default function MyEventsLiked() {
         throw new Error(err.error || "Erreur lors de la participation.");
       }
 
-      // Retirer l'événement de la liste locale des likés après participation
       setLikedEvents((prev) => prev.filter((event) => event.id !== eventId));
     } catch (error) {
       console.error("Erreur participation :", error);
@@ -78,7 +75,74 @@ export default function MyEventsLiked() {
       <h2 className="text-3xl font-extrabold mb-6 text-center">❤️ Mes événements likés</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {likedEvents.map((event) => (
-          <EventCard key={event.id} event={event} onAttend={handleAttend} />
+          <div
+            key={event.id}
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              padding: 16,
+              boxShadow: "0 1px 5px rgba(0,0,0,0.1)",
+              display: "flex",
+              flexDirection: "column",
+              backgroundColor: "#fff",
+            }}
+          >
+            {event.imageUrl ? (
+              <img
+                src={event.imageUrl}
+                alt={event.name}
+                style={{
+                  width: "100%",
+                  height: 160,
+                  objectFit: "cover",
+                  borderRadius: "6px",
+                  marginBottom: 12,
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "100%",
+                  height: 160,
+                  backgroundColor: "#ccc",
+                  borderRadius: "6px",
+                  marginBottom: 12,
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  color: "#666",
+                  fontWeight: "bold",
+                }}
+              >
+                Pas d’image
+              </div>
+            )}
+
+            <h3 style={{ margin: "0 0 8px", fontWeight: "700", fontSize: 20 }}>
+              {event.name}
+            </h3>
+            <p style={{ flexGrow: 1, color: "#555", marginBottom: 12 }}>
+              {event.description || "Pas de description disponible."}
+            </p>
+
+            <button
+              onClick={() => handleAttend(event.id)}
+              style={{
+                backgroundColor: "#22c55e",
+                color: "white",
+                padding: "10px 0",
+                borderRadius: 6,
+                border: "none",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "background-color 0.3s",
+              }}
+              onMouseEnter={(e) => (e.target.style.backgroundColor = "#16a34a")}
+              onMouseLeave={(e) => (e.target.style.backgroundColor = "#22c55e")}
+            >
+              J’y vais
+            </button>
+          </div>
         ))}
       </div>
     </div>
